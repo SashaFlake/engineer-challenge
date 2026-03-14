@@ -8,7 +8,7 @@ class User(
     val email: Email,
     private var hashedPassword: HashedPassword,
     private var loginAttemptGuard: LoginAttemptGuard = LoginAttemptGuard.DEFAULT,
-    val createdAt: Instant = Instant.now(),
+    val createdAt: Instant,
 ) {
     fun canLogin(now: Instant): Boolean = !loginAttemptGuard.isLocked(now)
 
@@ -32,11 +32,16 @@ class User(
     fun getLoginAttemptGuard(): LoginAttemptGuard = loginAttemptGuard
 
     companion object {
-        fun register(email: Email, plain: PlainPassword, hasher: PasswordHasher): User =
+        fun register(userId: UserId = UserId.generate(),
+                     email: Email,
+                     plain: PlainPassword,
+                     hasher: PasswordHasher,
+                     createdAt: Instant = Instant.now()): User =
             User(
-                id = UserId.generate(),
+                id = userId,
                 email = email,
                 hashedPassword = HashedPassword.create(plain, hasher),
+                createdAt = createdAt
             )
     }
 }

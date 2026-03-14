@@ -5,8 +5,8 @@ import auth.model.user.User
 import auth.model.user.UserId
 
 interface UserRepository {
-    fun findById(id: UserId): User?
-    fun findByEmail(email: Email): User?
-    fun save(user: User)
-    fun existsByEmail(email: Email): Boolean
+    suspend fun findById(id: UserId): User?
+    suspend fun findByEmail(email: Email): User?
+    suspend fun save(user: User)
+    suspend fun existsByEmail(email: Email): Boolean
 }

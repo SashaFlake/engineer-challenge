@@ -8,8 +8,10 @@ value class Email private constructor(val value: String) {
 
         fun create(raw: String): Email {
             val normalized = raw.trim().lowercase()
-            require(PATTERN.matches(normalized)) { "Invalid email format: $raw" }
-            return Email(normalized)
+            when(PATTERN.matches(normalized)) {
+                true -> return Email(normalized)
+                else -> throw IllegalArgumentException("Invalid email format: $raw")
+            }
         }
 
         fun fromStorage(value: String): Email = Email(value)

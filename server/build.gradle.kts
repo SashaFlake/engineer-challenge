@@ -7,12 +7,13 @@ val kotlinx_rpc_version: String by project
 val logback_version: String by project
 val postgres_version: String by project
 val prometheus_version: String by project
+val arrow_version: String by project
 
 plugins {
     kotlin("jvm") version "2.3.0"
     id("io.ktor.plugin") version "3.4.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0"
-    id("org.jetbrains.kotlinx.rpc.plugin") version "0.10.2"
+//    id("org.jetbrains.kotlinx.rpc.plugin") version "0.10.2"
     id("org.jetbrains.kotlinx.rpc.plugin") version "0.11.0-grpc-185"
 }
 
@@ -68,6 +69,8 @@ dependencies {
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
+    implementation("io.arrow-kt:arrow-core:$arrow_version")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+
 }
