@@ -30,14 +30,16 @@ class RequestPasswordResetHandler(
                     userId = user.id,
                     now = clock.instant(),
                 )
-
-                tokens.deleteByUserId(user.id)
-                tokens.save(token)
-                emailSender.sendPasswordResetEmail(email, token.value)
+                Either.catch {
+                    tokens.deleteByUserId(user.id)
+                    tokens.save(token)
+                    emailSender.sendPasswordResetEmail(email, token.value)
+                }.mapLeft { RequestPasswordResetError.RequestPasswordResetFailed }
                 Unit.right()
             }
 }
 
 sealed class RequestPasswordResetError {
     data object InvalidEmail : RequestPasswordResetError()
+    data object RequestPasswordResetFailed : RequestPasswordResetError()
 }
