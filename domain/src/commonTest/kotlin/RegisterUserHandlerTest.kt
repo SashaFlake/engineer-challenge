@@ -7,7 +7,7 @@ import auth.port.PasswordHasher
 import auth.port.UserRepository
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
-import io.kotest.core.spec.style.FeatureSpec
+import io.kotest.core.spec.style.ShouldSpec
 import io.mockk.Runs
 import io.mockk.clearMocks
 import io.mockk.every
@@ -20,9 +20,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 
-
-
-class RegisterUserHandlerTest : FeatureSpec({
+class RegisterUserHandlerTest : ShouldSpec({
     val exampleEmail = "new@example.com"
     val takenEmail = "taken@example.com"
 
@@ -47,52 +45,50 @@ class RegisterUserHandlerTest : FeatureSpec({
         every { hasher.verify(any(), any()) } returns false
     }
 
-    feature("user registration") {
 
-        scenario("should returns user id when happy path") {
-            val expectedEmail = Email.create(exampleEmail)
-            coEvery { users.existsByEmail(expectedEmail) } returns false
-            coEvery { users.save(any()) } just Runs
+    should("should returns user id when happy path") {
+        val expectedEmail = Email.create(exampleEmail)
+        coEvery { users.existsByEmail(expectedEmail) } returns false
+        coEvery { users.save(any()) } just Runs
 
-            val result = handler.handle(RegisterUserCommand(exampleEmail, "Password1"))
+        val result = handler.handle(RegisterUserCommand(exampleEmail, "Password1"))
 
-            result.shouldBeRight(fixedId)
-            coVerify(exactly = 1) { users.save(any()) }
-        }
-
-        scenario("should return UserAlreadyExists when email already exists") {
-            coEvery { users.existsByEmail(Email.create(takenEmail)) } returns true
-
-            val result = handler.handle(RegisterUserCommand(takenEmail, "Password1"))
-
-            result.shouldBeLeft(RegisterUserError.UserAlreadyExists)
-            coVerify(exactly = 0) { users.save(any()) }
-        }
-
-        scenario("should return InvalidEmail when email is invalid") {
-            val result = handler.handle(RegisterUserCommand("not-an-email", "Password1"))
-
-            result.shouldBeLeft(RegisterUserError.InvalidEmail)
-            coVerify(exactly = 0) { users.existsByEmail(any()) }
-        }
-
-        scenario("should return UserCreationFailed when repository save throws") {
-            coEvery { users.existsByEmail(any()) } returns false
-            coEvery { users.save(any()) } throws RuntimeException("DB is down")
-
-            val result = handler.handle(RegisterUserCommand(exampleEmail, "Password1"))
-
-            result.shouldBeLeft(RegisterUserError.UserCreationFailed)
-        }
-
-        scenario("should return UserCreationFailed when repository throws an exception") {
-            coEvery { users.existsByEmail(any()) } returns false
-            coEvery { users.save(any()) } throws RuntimeException("DB is down")
-
-            val result = handler.handle(RegisterUserCommand(exampleEmail, "Password1"))
-
-            result.shouldBeLeft(RegisterUserError.UserCreationFailed)
-        }
-
+        result.shouldBeRight(fixedId)
+        coVerify(exactly = 1) { users.save(any()) }
     }
+
+    should("should return UserAlreadyExists when email already exists") {
+        coEvery { users.existsByEmail(Email.create(takenEmail)) } returns true
+
+        val result = handler.handle(RegisterUserCommand(takenEmail, "Password1"))
+
+        result.shouldBeLeft(RegisterUserError.UserAlreadyExists)
+        coVerify(exactly = 0) { users.save(any()) }
+    }
+
+    should("should return InvalidEmail when email is invalid") {
+        val result = handler.handle(RegisterUserCommand("not-an-email", "Password1"))
+
+        result.shouldBeLeft(RegisterUserError.InvalidEmail)
+        coVerify(exactly = 0) { users.existsByEmail(any()) }
+    }
+
+    should("should return UserCreationFailed when repository save throws") {
+        coEvery { users.existsByEmail(any()) } returns false
+        coEvery { users.save(any()) } throws RuntimeException("DB is down")
+
+        val result = handler.handle(RegisterUserCommand(exampleEmail, "Password1"))
+
+        result.shouldBeLeft(RegisterUserError.UserCreationFailed)
+    }
+
+    should("should return UserCreationFailed when repository throws an exception") {
+        coEvery { users.existsByEmail(any()) } returns false
+        coEvery { users.save(any()) } throws RuntimeException("DB is down")
+
+        val result = handler.handle(RegisterUserCommand(exampleEmail, "Password1"))
+
+        result.shouldBeLeft(RegisterUserError.UserCreationFailed)
+    }
+
 })
