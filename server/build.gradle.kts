@@ -2,6 +2,9 @@ val kotlin_version: String by project
 val logback_version: String by project
 val prometheus_version: String by project
 val arrow_version: String by project
+val koin_version: String by project
+val kotest_version: String by project
+val graphql_kotlin_version: String by project
 
 plugins {
     kotlin("jvm") version "2.3.0"
@@ -15,6 +18,16 @@ application {
 
 kotlin {
     jvmToolchain(21)
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("io.insert-koin:koin-core:$koin_version")
+    }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
 
 dependencies {
@@ -34,9 +47,17 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics-micrometer")
     implementation("io.micrometer:micrometer-registry-prometheus:$prometheus_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("io.ktor:ktor-server-config-yaml")
     implementation("io.arrow-kt:arrow-core:$arrow_version")
+    implementation("com.expediagroup:graphql-kotlin-ktor-server:$graphql_kotlin_version")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("io.insert-koin:koin-core:$koin_version")
+    implementation("io.insert-koin:koin-ktor:$koin_version")
+    implementation("io.insert-koin:koin-logger-slf4j:$koin_version")
+    implementation("org.mindrot:jbcrypt:0.4")
     testImplementation("io.ktor:ktor-server-test-host")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
-
+    testImplementation("io.ktor:ktor-client-content-negotiation")
+    testImplementation("io.ktor:ktor-serialization-jackson")
+    testImplementation("io.insert-koin:koin-test:$koin_version")
+    testImplementation("io.kotest:kotest-runner-junit5:$kotest_version")
+    testImplementation("io.kotest:kotest-assertions-core:$kotest_version")
 }
