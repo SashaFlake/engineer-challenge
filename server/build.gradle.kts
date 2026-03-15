@@ -7,6 +7,7 @@ plugins {
     kotlin("jvm") version "2.3.0"
     id("io.ktor.plugin") version "3.4.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0"
+    id("org.jetbrains.kotlinx.rpc.plugin") version "0.11.0-grpc-185"
 }
 
 application {
