@@ -1,6 +1,7 @@
 val kotlin_version: String by project
 val logback_version: String by project
 val prometheus_version: String by project
+val arrow_version: String by project
 
 plugins {
     kotlin("jvm") version "2.3.0"
@@ -33,6 +34,9 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics-micrometer")
     implementation("io.micrometer:micrometer-registry-prometheus:$prometheus_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("io.ktor:ktor-server-config-yaml")
+    implementation("io.arrow-kt:arrow-core:$arrow_version")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+
 }

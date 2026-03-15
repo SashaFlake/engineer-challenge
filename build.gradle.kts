@@ -4,7 +4,6 @@ plugins {
     id("io.ktor.plugin") version "3.4.1" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0" apply false
 }
-
 subprojects {
     group = "com.sashaflake"
     version = "0.0.1"
