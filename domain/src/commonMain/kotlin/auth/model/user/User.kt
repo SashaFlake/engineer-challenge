@@ -13,13 +13,18 @@ class User(
     fun canLogin(now: Instant): Boolean = !loginAttemptGuard.isLocked(now)
 
     fun verifyPassword(plain: PlainPassword, hasher: PasswordHasher, now: Instant): Boolean {
-        if (!canLogin(now)) return false
-        return if (hashedPassword.matches(plain, hasher)) {
-            loginAttemptGuard = loginAttemptGuard.recordSuccess()
-            true
-        } else {
-            loginAttemptGuard = loginAttemptGuard.recordFailure(now)
-            false
+        return when {
+            !canLogin(now) -> false
+            else -> when {
+                hashedPassword.matches(plain, hasher) -> {
+                    loginAttemptGuard = loginAttemptGuard.recordSuccess()
+                    true
+                }
+                else -> {
+                    loginAttemptGuard = loginAttemptGuard.recordFailure(now)
+                    false
+                }
+            }
         }
     }
 

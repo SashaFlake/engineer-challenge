@@ -12,10 +12,13 @@ data class LoginAttemptGuard(
 
     fun recordFailure(now: Instant): LoginAttemptGuard {
         val next = failedAttempts + 1
-        return if (next >= MAX_ATTEMPTS) {
-            copy(failedAttempts = next, lockedUntil = now.plus(LOCK_DURATION))
-        } else {
-            copy(failedAttempts = next)
+        return when {
+            next >= MAX_ATTEMPTS -> {
+                copy(failedAttempts = next, lockedUntil = now.plus(LOCK_DURATION))
+            }
+            else -> {
+                copy(failedAttempts = next)
+            }
         }
     }
 
