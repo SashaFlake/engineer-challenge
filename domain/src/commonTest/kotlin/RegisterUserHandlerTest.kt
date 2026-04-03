@@ -46,7 +46,7 @@ class RegisterUserHandlerTest : ShouldSpec({
     }
 
 
-    should("should returns user id when happy path") {
+    should("returns user id when happy path") {
         val expectedEmail = Email.create(exampleEmail)
         coEvery { users.existsByEmail(expectedEmail) } returns false
         coEvery { users.save(any()) } just Runs
@@ -57,7 +57,7 @@ class RegisterUserHandlerTest : ShouldSpec({
         coVerify(exactly = 1) { users.save(any()) }
     }
 
-    should("should return UserAlreadyExists when email already exists") {
+    should("return UserAlreadyExists when email already exists") {
         coEvery { users.existsByEmail(Email.create(takenEmail)) } returns true
 
         val result = handler.handle(RegisterUserCommand(takenEmail, "Password1"))
@@ -66,14 +66,14 @@ class RegisterUserHandlerTest : ShouldSpec({
         coVerify(exactly = 0) { users.save(any()) }
     }
 
-    should("should return InvalidEmail when email is invalid") {
+    should("return InvalidEmail when email is invalid") {
         val result = handler.handle(RegisterUserCommand("not-an-email", "Password1"))
 
         result.shouldBeLeft(RegisterUserError.InvalidEmail)
         coVerify(exactly = 0) { users.existsByEmail(any()) }
     }
 
-    should("should return UserCreationFailed when repository save throws") {
+    should("return UserCreationFailed when repository save throws") {
         coEvery { users.existsByEmail(any()) } returns false
         coEvery { users.save(any()) } throws RuntimeException("DB is down")
 
@@ -82,7 +82,7 @@ class RegisterUserHandlerTest : ShouldSpec({
         result.shouldBeLeft(RegisterUserError.UserCreationFailed)
     }
 
-    should("should return UserCreationFailed when repository throws an exception") {
+    should("return UserCreationFailed when repository throws an exception") {
         coEvery { users.existsByEmail(any()) } returns false
         coEvery { users.save(any()) } throws RuntimeException("DB is down")
 
