@@ -13,7 +13,11 @@ data class PasswordResetToken(
     companion object {
         private const val TTL_SECONDS = 3600L
 
-        fun create(value: String, userId: UserId, now: Instant): PasswordResetToken =
+        fun create(
+            value: String,
+            userId: UserId,
+            now: Instant
+        ): PasswordResetToken =
             PasswordResetToken(
                 value = value,
                 userId = userId,

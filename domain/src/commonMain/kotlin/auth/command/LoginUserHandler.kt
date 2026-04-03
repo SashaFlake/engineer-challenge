@@ -31,12 +31,17 @@ class LoginUserHandler(
         }
     }
 
-    private suspend fun resolveStep(cmd: LoginUserCommand, now: Instant): LoginStep {
-        val email = Either.catch { Email.create(cmd.email) }
-            .getOrElse { return LoginStep.InvalidEmail }
+    private suspend fun resolveStep(
+        cmd: LoginUserCommand,
+        now: Instant
+    ): LoginStep {
+        val email =
+            Either.catch { Email.create(cmd.email) }
+                .getOrElse { return LoginStep.InvalidEmail }
 
-        val user = users.findByEmail(email)
-            ?: return LoginStep.UserNotFound
+        val user =
+            users.findByEmail(email)
+                ?: return LoginStep.UserNotFound
 
         when {
             !user.canLogin(now) -> return LoginStep.AccountLocked
@@ -58,14 +63,17 @@ class LoginUserHandler(
 }
 
 private sealed class LoginStep {
-    data object InvalidEmail     : LoginStep()
-    data object UserNotFound     : LoginStep()
-    data object AccountLocked    : LoginStep()
-    data object InvalidPassword  : LoginStep()
-    data class  Success(val userId: UserId) : LoginStep()
+    data object InvalidEmail : LoginStep()
+    data object UserNotFound : LoginStep()
+    data object AccountLocked : LoginStep()
+    data object InvalidPassword : LoginStep()
+    data class Success(
+        val userId: UserId
+    ) : LoginStep()
 }
 
 sealed class LoginUserError {
     data object InvalidCredentials : LoginUserError()
-    data object AccountLocked      : LoginUserError()
+
+    data object AccountLocked : LoginUserError()
 }

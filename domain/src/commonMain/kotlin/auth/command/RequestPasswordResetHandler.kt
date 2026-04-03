@@ -20,27 +20,32 @@ class RequestPasswordResetHandler(
     private val clock: Clock,
 ) {
     suspend fun handle(cmd: RequestPasswordResetCommand): Either<RequestPasswordResetError, Unit> =
-        Either.catch { Email.create(cmd.email) }
+        Either
+            .catch { Email.create(cmd.email) }
             .mapLeft { RequestPasswordResetError.InvalidEmail }
             .flatMap { email ->
-                val user = users.findByEmail(email)
-                    ?: return@flatMap Unit.right()
+                val user =
+                    users.findByEmail(email)
+                        ?: return@flatMap Unit.right()
 
-                val token = PasswordResetToken.create(
-                    value = tokenGenerator.generate(),
-                    userId = user.id,
-                    now = clock.instant(),
-                )
-                Either.catch {
-                    tokens.deleteByUserId(user.id)
-                    tokens.save(token)
-                    emailSender.sendPasswordResetEmail(email, token.value)
-                }.mapLeft { return@flatMap RequestPasswordResetError.RequestPasswordResetFailed.left() }
+                val token =
+                    PasswordResetToken.create(
+                        value = tokenGenerator.generate(),
+                        userId = user.id,
+                        now = clock.instant(),
+                    )
+                Either
+                    .catch {
+                        tokens.deleteByUserId(user.id)
+                        tokens.save(token)
+                        emailSender.sendPasswordResetEmail(email, token.value)
+                    }.mapLeft { return@flatMap RequestPasswordResetError.RequestPasswordResetFailed.left() }
                 Unit.right()
             }
 }
 
 sealed class RequestPasswordResetError {
     data object InvalidEmail : RequestPasswordResetError()
+
     data object RequestPasswordResetFailed : RequestPasswordResetError()
 }

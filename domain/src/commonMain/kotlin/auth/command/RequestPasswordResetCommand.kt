@@ -1,3 +1,5 @@
 package auth.command
 
-data class RequestPasswordResetCommand(val email: String)
+data class RequestPasswordResetCommand(
+    val email: String
+)

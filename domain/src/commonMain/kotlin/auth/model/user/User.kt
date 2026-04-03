@@ -12,36 +12,46 @@ class User(
 ) {
     fun canLogin(now: Instant): Boolean = !loginAttemptGuard.isLocked(now)
 
-    fun verifyPassword(plain: PlainPassword, hasher: PasswordHasher, now: Instant): Boolean {
-        return when {
+    fun verifyPassword(
+        plain: PlainPassword,
+        hasher: PasswordHasher,
+        now: Instant
+    ): Boolean =
+        when {
             !canLogin(now) -> false
-            else -> when {
-                hashedPassword.matches(plain, hasher) -> {
-                    loginAttemptGuard = loginAttemptGuard.recordSuccess()
-                    true
+            else ->
+                when {
+                    hashedPassword.matches(plain, hasher) -> {
+                        loginAttemptGuard = loginAttemptGuard.recordSuccess()
+                        true
+                    }
+                    else -> {
+                        loginAttemptGuard = loginAttemptGuard.recordFailure(now)
+                        false
+                    }
                 }
-                else -> {
-                    loginAttemptGuard = loginAttemptGuard.recordFailure(now)
-                    false
-                }
-            }
         }
-    }
 
-    fun changePassword(plain: PlainPassword, hasher: PasswordHasher) {
+    fun changePassword(
+        plain: PlainPassword,
+        hasher: PasswordHasher
+    ) {
         hashedPassword = HashedPassword.create(plain, hasher)
     }
 
     // For persistence layer only
     fun getHashedPassword(): HashedPassword = hashedPassword
+
     fun getLoginAttemptGuard(): LoginAttemptGuard = loginAttemptGuard
 
     companion object {
-        fun register(userId: UserId = UserId.generate(),
-                     email: Email,
-                     plain: PlainPassword,
-                     hasher: PasswordHasher,
-                     createdAt: Instant = Instant.now()): User =
+        fun register(
+            userId: UserId = UserId.generate(),
+            email: Email,
+            plain: PlainPassword,
+            hasher: PasswordHasher,
+            createdAt: Instant = Instant.now()
+        ): User =
             User(
                 id = userId,
                 email = email,

@@ -10,8 +10,9 @@ import com.expediagroup.graphql.server.ktor.graphQLSDLRoute
 import com.expediagroup.graphql.server.ktor.graphiQLRoute
 import com.sashaflake.presentation.graphql.AuthMutation
 import com.sashaflake.presentation.graphql.HealthQuery
-import io.ktor.server.application.*
-import io.ktor.server.routing.*
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.routing.routing
 import org.koin.ktor.ext.inject
 
 fun Application.configureGraphQL() {
@@ -24,9 +25,10 @@ fun Application.configureGraphQL() {
         schema {
             packages = listOf("com.sashaflake.presentation.graphql")
             queries = listOf(HealthQuery())
-            mutations = listOf(
-                AuthMutation(registerHandler, resetRequestHandler, resetHandler, loginUserHandler)
-            )
+            mutations =
+                listOf(
+                    AuthMutation(registerHandler, resetRequestHandler, resetHandler, loginUserHandler)
+                )
         }
     }
 

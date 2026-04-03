@@ -16,33 +16,40 @@ class ResetPasswordHandler(
     private val clock: Clock,
 ) {
     suspend fun handle(cmd: ResetPasswordCommand): Either<ResetPasswordError, Unit> {
-        val token = tokens.findByValue(cmd.token)
-            ?: return ResetPasswordError.TokenNotFound.left()
+        val token =
+            tokens.findByValue(cmd.token)
+                ?: return ResetPasswordError.TokenNotFound.left()
 
         if (token.isExpired(clock.instant())) {
             return ResetPasswordError.TokenExpired.left()
         }
 
-        val user = users.findById(token.userId)
-            ?: return ResetPasswordError.UserNotFound.left()
+        val user =
+            users.findById(token.userId)
+                ?: return ResetPasswordError.UserNotFound.left()
 
-        return Either.catch {
-            user.changePassword(PlainPassword(cmd.newPassword), hasher)
-        }
-            .mapLeft { ResetPasswordError.WeakPassword }
+        return Either
+            .catch {
+                user.changePassword(PlainPassword(cmd.newPassword), hasher)
+            }.mapLeft { ResetPasswordError.WeakPassword }
             .flatMap {
-                Either.catch {
-                    users.save(user)
-                    tokens.deleteByUserId(user.id)
-                }.mapLeft { ResetPasswordError.SaveFailed }
+                Either
+                    .catch {
+                        users.save(user)
+                        tokens.deleteByUserId(user.id)
+                    }.mapLeft { ResetPasswordError.SaveFailed }
             }
     }
 }
 
 sealed class ResetPasswordError {
     data object TokenNotFound : ResetPasswordError()
+
     data object TokenExpired : ResetPasswordError()
+
     data object UserNotFound : ResetPasswordError()
+
     data object WeakPassword : ResetPasswordError()
+
     data object SaveFailed : ResetPasswordError()
 }
