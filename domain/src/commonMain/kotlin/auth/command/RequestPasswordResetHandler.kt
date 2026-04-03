@@ -3,6 +3,7 @@ package auth.command
 import EmailSender
 import arrow.core.Either
 import arrow.core.flatMap
+import arrow.core.left
 import arrow.core.right
 import auth.model.passwordreset.PasswordResetToken
 import auth.model.user.Email
@@ -34,7 +35,7 @@ class RequestPasswordResetHandler(
                     tokens.deleteByUserId(user.id)
                     tokens.save(token)
                     emailSender.sendPasswordResetEmail(email, token.value)
-                }.mapLeft { RequestPasswordResetError.RequestPasswordResetFailed }
+                }.mapLeft { return@flatMap RequestPasswordResetError.RequestPasswordResetFailed.left() }
                 Unit.right()
             }
 }
