@@ -1,5 +1,6 @@
 package com.sashaflake.infrastructure.plugins
 
+import auth.command.LoginUserHandler
 import auth.command.RegisterUserHandler
 import auth.command.RequestPasswordResetHandler
 import auth.command.ResetPasswordHandler
@@ -17,13 +18,14 @@ fun Application.configureGraphQL() {
     val registerHandler by inject<RegisterUserHandler>()
     val resetRequestHandler by inject<RequestPasswordResetHandler>()
     val resetHandler by inject<ResetPasswordHandler>()
+    val loginUserHandler by inject<LoginUserHandler>()
 
     install(GraphQL) {
         schema {
             packages = listOf("com.sashaflake.presentation.graphql")
             queries = listOf(HealthQuery())
             mutations = listOf(
-                AuthMutation(registerHandler, resetRequestHandler, resetHandler)
+                AuthMutation(registerHandler, resetRequestHandler, resetHandler, loginUserHandler)
             )
         }
     }

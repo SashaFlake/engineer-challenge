@@ -76,7 +76,7 @@ class LoginUserHandlerTest : ShouldSpec({
         val result = handler.handle(LoginUserCommand(email, "WrongPassword"))
 
         result.shouldBeLeft(LoginUserError.InvalidCredentials)
-        coVerify(exactly = 1) { users.save(any()) } // guard должен быть сохранён
+        coVerify(exactly = 1) { users.save(any()) }
     }
 
     should("return InvalidCredentials when user does not exist") {
@@ -99,14 +99,14 @@ class LoginUserHandlerTest : ShouldSpec({
     should("return AccountLocked when account is locked") {
         val lockedGuard = LoginAttemptGuard(
             failedAttempts = LoginAttemptGuard.MAX_ATTEMPTS,
-            lockedUntil = Instant.parse("2026-01-01T00:15:00Z"), // заблокирован до +15 мин
+            lockedUntil = Instant.parse("2026-01-01T00:15:00Z"),
         )
         coEvery { users.findByEmail(Email.create(email)) } returns makeUser(lockedGuard)
 
         val result = handler.handle(LoginUserCommand(email, password))
 
         result.shouldBeLeft(LoginUserError.AccountLocked)
-        coVerify(exactly = 0) { users.save(any()) } // не трогаем guard, раз вход не пытались
+        coVerify(exactly = 0) { users.save(any()) }
     }
 
     should("persist incremented failure counter after wrong password") {

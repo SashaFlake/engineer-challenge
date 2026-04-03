@@ -15,7 +15,7 @@ import io.ktor.server.testing.*
 import kotlinx.serialization.json.*
 import org.koin.core.context.stopKoin
 
-class RegisterUserMutationTest : DescribeSpec({
+class LoginUserMutationTest : DescribeSpec({
 
     lateinit var app: TestApplication
     lateinit var client: HttpClient
@@ -38,6 +38,17 @@ class RegisterUserMutationTest : DescribeSpec({
         client = app.createClient {
             install(ContentNegotiation) { jackson() }
         }
+
+        client.post("/graphql") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("query" to """
+                mutation {
+                    registerUser(email: "login-user@example.com", password: "Password1") {
+                        success
+                    }
+                }
+            """.trimIndent()))
+        }
     }
 
     afterSpec {
@@ -48,105 +59,87 @@ class RegisterUserMutationTest : DescribeSpec({
 
     fun graphqlBody(query: String): Map<String, String> = mapOf("query" to query)
 
-    fun parseRegisterUser(responseText: String): JsonObject =
+    fun parseLoginUser(responseText: String): JsonObject =
         Json.parseToJsonElement(responseText)
             .jsonObject["data"]!!
-            .jsonObject["registerUser"]!!
+            .jsonObject["loginUser"]!!
             .jsonObject
 
-    describe("registerUser mutation") {
+    describe("loginUser mutation") {
 
-        it("returns userId on successful registration") {
+        it("returns token on successful login") {
             val response = client.post("/graphql") {
                 contentType(ContentType.Application.Json)
-                setBody(
-                    graphqlBody(
-                        """
+                setBody(graphqlBody("""
                     mutation {
-                        registerUser(email: "alice@example.com", password: "Password1") {
-                            success userId error
+                        loginUser(email: "login-user@example.com", password: "Password1") {
+                            success token error
                         }
                     }
-                """.trimIndent()
-                    )
-                )
+                """.trimIndent()))
             }
 
             response.status shouldBe HttpStatusCode.OK
-            val data = parseRegisterUser(response.bodyAsText())
+            val data = parseLoginUser(response.bodyAsText())
             data["success"]!!.jsonPrimitive.boolean shouldBe true
-            data["userId"]!!.jsonPrimitive.content.shouldNotBeEmpty()
+            data["token"]!!.jsonPrimitive.content.shouldNotBeEmpty()
             data["error"] shouldBe JsonNull
         }
 
-        it("returns error on duplicate email") {
-            val body = graphqlBody(
-                """
-                mutation {
-                    registerUser(email: "bob@example.com", password: "Password1") {
-                        success userId error
-                    }
-                }
-            """.trimIndent()
-            )
-
-            client.post("/graphql") {
-                contentType(ContentType.Application.Json)
-                setBody(body)
-            }
-
+        it("returns error on wrong password") {
             val response = client.post("/graphql") {
                 contentType(ContentType.Application.Json)
-                setBody(body)
+                setBody(graphqlBody("""
+                    mutation {
+                        loginUser(email: "login-user@example.com", password: "WrongPassword1") {
+                            success token error
+                        }
+                    }
+                """.trimIndent()))
             }
 
             response.status shouldBe HttpStatusCode.OK
-            val data = parseRegisterUser(response.bodyAsText())
+            val data = parseLoginUser(response.bodyAsText())
             data["success"]!!.jsonPrimitive.boolean shouldBe false
+            data["token"] shouldBe JsonNull
+            data["error"]!!.jsonPrimitive.content.shouldNotBeEmpty()
+        }
+
+        it("returns error on non-existing email") {
+            val response = client.post("/graphql") {
+                contentType(ContentType.Application.Json)
+                setBody(graphqlBody("""
+                    mutation {
+                        loginUser(email: "nobody@example.com", password: "Password1") {
+                            success token error
+                        }
+                    }
+                """.trimIndent()))
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val data = parseLoginUser(response.bodyAsText())
+            data["success"]!!.jsonPrimitive.boolean shouldBe false
+            data["token"] shouldBe JsonNull
             data["error"]!!.jsonPrimitive.content.shouldNotBeEmpty()
         }
 
         it("returns error on invalid email format") {
             val response = client.post("/graphql") {
                 contentType(ContentType.Application.Json)
-                setBody(
-                    graphqlBody(
-                        """
+                setBody(graphqlBody("""
                     mutation {
-                        registerUser(email: "not-an-email", password: "Password1") {
-                            success userId error
+                        loginUser(email: "not-an-email", password: "Password1") {
+                            success token error
                         }
                     }
-                """.trimIndent()
-                    )
-                )
+                """.trimIndent()))
             }
 
             response.status shouldBe HttpStatusCode.OK
-            val data = parseRegisterUser(response.bodyAsText())
+            val data = parseLoginUser(response.bodyAsText())
             data["success"]!!.jsonPrimitive.boolean shouldBe false
-            data["error"]!!.jsonPrimitive.content.shouldNotBeEmpty()
-        }
-
-        it("returns error on weak password") {
-            val response = client.post("/graphql") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    graphqlBody(
-                        """
-                    mutation {
-                        registerUser(email: "carol@example.com", password: "weak") {
-                            success userId error
-                        }
-                    }
-                """.trimIndent()
-                    )
-                )
-            }
-
-            response.status shouldBe HttpStatusCode.OK
-            val data = parseRegisterUser(response.bodyAsText())
-            data["success"]!!.jsonPrimitive.boolean shouldBe false
+            data["token"] shouldBe JsonNull
             data["error"]!!.jsonPrimitive.content.shouldNotBeEmpty()
         }
     }

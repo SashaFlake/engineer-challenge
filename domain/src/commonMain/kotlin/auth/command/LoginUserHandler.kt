@@ -38,15 +38,17 @@ class LoginUserHandler(
         val user = users.findByEmail(email)
             ?: return LoginStep.UserNotFound
 
-        if (!user.canLogin(now))
-            return LoginStep.AccountLocked
+        when {
+            !user.canLogin(now) -> return LoginStep.AccountLocked
+            else -> {
+                val passwordOk = user.verifyPassword(PlainPassword(cmd.password), hasher, now)
+                updateGuard(user)
 
-        val passwordOk = user.verifyPassword(PlainPassword(cmd.password), hasher, now)
-        updateGuard(user)
-
-        return when {
-            passwordOk -> LoginStep.Success(user.id)
-            else -> LoginStep.InvalidPassword
+                return when {
+                    passwordOk -> LoginStep.Success(user.id)
+                    else -> LoginStep.InvalidPassword
+                }
+            }
         }
     }
 

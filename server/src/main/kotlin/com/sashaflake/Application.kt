@@ -18,7 +18,7 @@ fun main(args: Array<String>) {
 fun Application.module() {
     install(Koin) {
         slf4jLogger()
-        modules(appModule)
+        modules(appModule(this@module))
     }
     configureHTTP()
     configureSecurity()
