@@ -11,13 +11,11 @@ class InMemoryUserRepository : UserRepository {
 
     override suspend fun findById(id: UserId): User? = store[id]
 
-    override suspend fun findByEmail(email: Email): User? =
-        store.values.firstOrNull { it.email == email }
+    override suspend fun findByEmail(email: Email): User? = store.values.firstOrNull { it.email == email }
 
     override suspend fun save(user: User) {
         store[user.id] = user
     }
 
-    override suspend fun existsByEmail(email: Email): Boolean =
-        store.values.any { it.email == email }
+    override suspend fun existsByEmail(email: Email): Boolean = store.values.any { it.email == email }
 }

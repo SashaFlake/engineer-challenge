@@ -12,11 +12,11 @@ class JwtTokenIssuer(
     private val audience: String,
     private val expirationMs: Long = 24 * 60 * 60 * 1000L, // 24h
 ) : TokenIssuer {
-
     private val algorithm = Algorithm.HMAC256(secret)
 
     override fun issue(userId: UserId): String =
-        JWT.create()
+        JWT
+            .create()
             .withIssuer(issuer)
             .withAudience(audience)
             .withSubject(userId.value.toString())

@@ -7,8 +7,7 @@ data class LoginAttemptGuard(
     val failedAttempts: Int = 0,
     val lockedUntil: Instant? = null,
 ) {
-    fun isLocked(now: Instant): Boolean =
-        lockedUntil != null && now.isBefore(lockedUntil)
+    fun isLocked(now: Instant): Boolean = lockedUntil != null && now.isBefore(lockedUntil)
 
     fun recordFailure(now: Instant): LoginAttemptGuard {
         val next = failedAttempts + 1

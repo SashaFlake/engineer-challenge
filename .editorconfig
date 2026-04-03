@@ -1,0 +1,36 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+max_line_length = 120
+
+ktlint_code_style = ktlint_official
+ktlint_standard_no-wildcard-imports = enabled
+ktlint_standard_import-ordering = enabled
+ktlint_standard_no-unused-imports = enabled
+ktlint_standard_no-trailing-whitespace = enabled
+ktlint_standard_no-blank-line-before-rbrace = enabled
+ktlint_standard_no-consecutive-blank-lines = enabled
+ktlint_standard_no-empty-class-body = enabled
+ktlint_standard_no-semi = enabled
+ktlint_standard_string-template = enabled
+
+ktlint_standard_function-expression-body = enabled
+
+ktlint_standard_trailing-comma-on-call-site = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled
+ktlint_standard_chain-method-continuation = disabled
+ktlint_standard_no-multi-spaces = disabled
+ktlint_standard_blank-line-before-declaration = disabled
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
