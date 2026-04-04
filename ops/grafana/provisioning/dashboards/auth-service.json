@@ -331,6 +331,156 @@
             ],
             "title": "Container Network I/O",
             "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": { "h": 1, "w": 24, "x": 0, "y": 51 },
+            "id": 103,
+            "title": "Business Metrics / Security",
+            "type": "row"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "reqps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 52 },
+            "id": 20,
+            "targets": [
+                {
+                    "expr": "rate(auth_login_total{result=\"success\"}[1m])",
+                    "legendFormat": "success",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(auth_login_total{result=\"error\"}[1m])",
+                    "legendFormat": "error — {{error}}",
+                    "refId": "B"
+                }
+            ],
+            "title": "Login Rate (req/s)",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "reqps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 52 },
+            "id": 21,
+            "targets": [
+                {
+                    "expr": "rate(auth_register_total{result=\"success\"}[1m])",
+                    "legendFormat": "success",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(auth_register_total{result=\"error\"}[1m])",
+                    "legendFormat": "error",
+                    "refId": "B"
+                }
+            ],
+            "title": "Registration Rate (req/s)",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "reqps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 60 },
+            "id": 22,
+            "targets": [
+                {
+                    "expr": "rate(auth_password_reset_request_total[1m])",
+                    "legendFormat": "reset requests",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(auth_password_reset_total{result=\"success\"}[1m])",
+                    "legendFormat": "reset success",
+                    "refId": "B"
+                },
+                {
+                    "expr": "rate(auth_password_reset_total{result=\"error\"}[1m])",
+                    "legendFormat": "reset error",
+                    "refId": "C"
+                }
+            ],
+            "title": "Password Reset Rate (req/s)",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            { "color": "green", "value": null },
+                            { "color": "yellow", "value": 3 },
+                            { "color": "red", "value": 10 }
+                        ]
+                    },
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 60 },
+            "id": 23,
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+            "targets": [
+                {
+                    "expr": "auth_login_failures_window",
+                    "legendFormat": "{{ip}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Suspicious IPs — Active Failures Window",
+            "type": "stat"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "reqps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 68 },
+            "id": 24,
+            "targets": [
+                {
+                    "expr": "rate(auth_login_suspicious_total[1m])",
+                    "legendFormat": "{{ip}} — {{error}}",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(auth_password_reset_suspicious_total[1m])",
+                    "legendFormat": "reset flood — {{ip}}",
+                    "refId": "B"
+                }
+            ],
+            "title": "Suspicious Activity by IP",
+            "type": "timeseries"
         }
     ],
     "refresh": "15s",
