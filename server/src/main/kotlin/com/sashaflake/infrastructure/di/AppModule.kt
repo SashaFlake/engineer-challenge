@@ -18,6 +18,8 @@ import com.sashaflake.infrastructure.adapter.JwtTokenIssuer
 import com.sashaflake.infrastructure.adapter.StubEmailSender
 import com.sashaflake.infrastructure.adapter.UuidIdGenerator
 import com.sashaflake.infrastructure.adapter.UuidPasswordResetTokenGenerator
+import com.sashaflake.infrastructure.metrics.AuthMetrics
+import com.sashaflake.infrastructure.plugins.appMicrometerRegistry
 import io.ktor.server.application.Application
 import org.koin.dsl.module
 import java.time.Clock
@@ -47,6 +49,7 @@ fun appModule(app: Application) =
                         .getString(),
             )
         }
+        single { AuthMetrics(appMicrometerRegistry) }
 
         single { RegisterUserHandler(get(), get(), get(), get()) }
         single { RequestPasswordResetHandler(get(), get(), get(), get(), get()) }

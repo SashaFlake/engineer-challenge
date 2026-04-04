@@ -8,6 +8,8 @@ import com.expediagroup.graphql.server.ktor.GraphQL
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import com.expediagroup.graphql.server.ktor.graphQLSDLRoute
 import com.expediagroup.graphql.server.ktor.graphiQLRoute
+import com.sashaflake.infrastructure.graphql.KtorGraphQLContextFactory
+import com.sashaflake.infrastructure.metrics.AuthMetrics
 import com.sashaflake.presentation.graphql.AuthMutation
 import com.sashaflake.presentation.graphql.HealthQuery
 import io.ktor.server.application.Application
@@ -20,14 +22,24 @@ fun Application.configureGraphQL() {
     val resetRequestHandler by inject<RequestPasswordResetHandler>()
     val resetHandler by inject<ResetPasswordHandler>()
     val loginUserHandler by inject<LoginUserHandler>()
+    val authMetrics by inject<AuthMetrics>()
 
     install(GraphQL) {
+        server {
+            contextFactory = KtorGraphQLContextFactory()
+        }
         schema {
             packages = listOf("com.sashaflake.presentation.graphql")
             queries = listOf(HealthQuery())
             mutations =
                 listOf(
-                    AuthMutation(registerHandler, resetRequestHandler, resetHandler, loginUserHandler)
+                    AuthMutation(
+                        registerHandler,
+                        resetRequestHandler,
+                        resetHandler,
+                        loginUserHandler,
+                        authMetrics
+                    )
                 )
         }
     }
