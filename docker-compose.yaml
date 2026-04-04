@@ -14,7 +14,7 @@ services:
     networks:
       - observability
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ || exit 1"]
+      test: ["CMD-SHELL", "wget http://localhost:8080/metrics || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -22,13 +22,13 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.54.1
-    container_name: engineer-challenge-prometheus.yml
+    container_name: engineer-challenge-prometheus
     restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus.yml
+      - prometheus_data:/prometheus
     depends_on:
       - app
       - cadvisor

@@ -1,0 +1,344 @@
+{
+    "__inputs": [],
+    "__requires": [],
+    "annotations": { "list": [] },
+    "description": "Auth Service — HTTP, JVM, Container metrics",
+    "editable": true,
+    "graphTooltip": 1,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+            "id": 100,
+            "title": "HTTP",
+            "type": "row"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "reqps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+            "id": 1,
+            "options": { "tooltip": { "mode": "multi" } },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum(rate(ktor_http_server_requests_seconds_count{job=\"engineer-challenge-app\"}[1m])) by (uri, method)",
+                    "legendFormat": "{{method}} {{uri}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Request Rate (req/s)",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "reqps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+            "id": 2,
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum(rate(ktor_http_server_requests_seconds_count{job=\"engineer-challenge-app\", status=~\"4..|5..\"}[1m])) by (uri, status)",
+                    "legendFormat": "{{status}} {{uri}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Error Rate 4xx / 5xx (req/s)",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+            "id": 3,
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.50, sum(rate(ktor_http_server_requests_seconds_bucket{job=\"engineer-challenge-app\"}[1m])) by (le, uri))",
+                    "legendFormat": "p50 {{uri}}",
+                    "refId": "A"
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(ktor_http_server_requests_seconds_bucket{job=\"engineer-challenge-app\"}[1m])) by (le, uri))",
+                    "legendFormat": "p95 {{uri}}",
+                    "refId": "B"
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(ktor_http_server_requests_seconds_bucket{job=\"engineer-challenge-app\"}[1m])) by (le, uri))",
+                    "legendFormat": "p99 {{uri}}",
+                    "refId": "C"
+                }
+            ],
+            "title": "Latency p50 / p95 / p99",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            { "color": "green", "value": null },
+                            { "color": "yellow", "value": 0.1 },
+                            { "color": "red", "value": 0.5 }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+            "id": 4,
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(ktor_http_server_requests_seconds_bucket{job=\"engineer-challenge-app\"}[5m])) by (le))",
+                    "legendFormat": "p99 overall",
+                    "refId": "A"
+                }
+            ],
+            "title": "P99 Latency (5m window)",
+            "type": "stat"
+        },
+        {
+            "collapsed": false,
+            "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+            "id": 101,
+            "title": "JVM",
+            "type": "row"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "bytes"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+            "id": 5,
+            "targets": [
+                {
+                    "expr": "jvm_memory_used_bytes{job=\"engineer-challenge-app\", area=\"heap\"}",
+                    "legendFormat": "heap used — {{id}}",
+                    "refId": "A"
+                },
+                {
+                    "expr": "jvm_memory_max_bytes{job=\"engineer-challenge-app\", area=\"heap\"}",
+                    "legendFormat": "heap max — {{id}}",
+                    "refId": "B"
+                }
+            ],
+            "title": "JVM Heap Memory",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 },
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+            "id": 6,
+            "targets": [
+                {
+                    "expr": "jvm_threads_live_threads{job=\"engineer-challenge-app\"}",
+                    "legendFormat": "live",
+                    "refId": "A"
+                },
+                {
+                    "expr": "jvm_threads_daemon_threads{job=\"engineer-challenge-app\"}",
+                    "legendFormat": "daemon",
+                    "refId": "B"
+                },
+                {
+                    "expr": "jvm_threads_peak_threads{job=\"engineer-challenge-app\"}",
+                    "legendFormat": "peak",
+                    "refId": "C"
+                }
+            ],
+            "title": "JVM Threads",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 },
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+            "id": 7,
+            "targets": [
+                {
+                    "expr": "sum(jvm_gc_pause_seconds_count{job=\"engineer-challenge-app\"})",
+                    "legendFormat": "GC pause count",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(jvm_gc_pause_seconds_sum{job=\"engineer-challenge-app\"}[1m])",
+                    "legendFormat": "GC pause rate (s/s)",
+                    "refId": "B"
+                }
+            ],
+            "title": "JVM GC Pauses",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            { "color": "green", "value": null },
+                            { "color": "yellow", "value": 50 },
+                            { "color": "red", "value": 80 }
+                        ]
+                    },
+                    "unit": "percent",
+                    "min": 0,
+                    "max": 100
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+            "id": 8,
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+            "targets": [
+                {
+                    "expr": "100 * sum(jvm_memory_used_bytes{job=\"engineer-challenge-app\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"engineer-challenge-app\", area=\"heap\"})",
+                    "legendFormat": "Heap Usage %",
+                    "refId": "A"
+                }
+            ],
+            "title": "JVM Heap Usage %",
+            "type": "gauge"
+        },
+        {
+            "collapsed": false,
+            "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+            "id": 102,
+            "title": "Container (cAdvisor)",
+            "type": "row"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+            "id": 9,
+            "targets": [
+                {
+                    "expr": "rate(container_cpu_usage_seconds_total{name=\"engineer-challenge-app\"}[1m])",
+                    "legendFormat": "CPU usage",
+                    "refId": "A"
+                }
+            ],
+            "title": "Container CPU Usage",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 },
+                    "unit": "bytes"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+            "id": 10,
+            "targets": [
+                {
+                    "expr": "container_memory_working_set_bytes{name=\"engineer-challenge-app\"}",
+                    "legendFormat": "working set",
+                    "refId": "A"
+                },
+                {
+                    "expr": "container_memory_rss{name=\"engineer-challenge-app\"}",
+                    "legendFormat": "RSS",
+                    "refId": "B"
+                }
+            ],
+            "title": "Container Memory",
+            "type": "timeseries"
+        },
+        {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 },
+                    "unit": "Bps"
+                },
+                "overrides": []
+            },
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 43 },
+            "id": 11,
+            "targets": [
+                {
+                    "expr": "rate(container_network_receive_bytes_total{name=\"engineer-challenge-app\"}[1m])",
+                    "legendFormat": "rx",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(container_network_transmit_bytes_total{name=\"engineer-challenge-app\"}[1m])",
+                    "legendFormat": "tx",
+                    "refId": "B"
+                }
+            ],
+            "title": "Container Network I/O",
+            "type": "timeseries"
+        }
+    ],
+    "refresh": "15s",
+    "schemaVersion": 39,
+    "tags": ["auth", "ktor", "jvm"],
+    "time": { "from": "now-30m", "to": "now" },
+    "timezone": "browser",
+    "title": "Auth Service",
+    "uid": "auth-service-001",
+    "version": 1
+}
