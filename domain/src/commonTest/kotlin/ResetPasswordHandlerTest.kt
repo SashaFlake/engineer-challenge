@@ -3,6 +3,7 @@ import auth.command.ResetPasswordError
 import auth.command.ResetPasswordHandler
 import auth.model.passwordreset.PasswordResetToken
 import auth.model.user.Email
+import auth.model.user.HashedPassword
 import auth.model.user.PlainPassword
 import auth.model.user.User
 import auth.model.user.UserId
@@ -153,5 +154,28 @@ class ResetPasswordHandlerTest :
 
             result.shouldBeLeft(ResetPasswordError.SaveFailed)
             coVerify(exactly = 0) { tokens.deleteByUserId(any()) }
+        }
+
+        should("return TokenExpired when token is past 15 minutes") {
+            val expiredToken =
+                PasswordResetToken(
+                    value = "expired-token",
+                    userId = fixedUserId,
+                    expiresAt = clock.instant().minusSeconds(1),
+                )
+            coEvery { tokens.findByValue("expired-token") } returns expiredToken
+            coEvery { users.findById(fixedUserId) } returns
+                User(
+                    id = fixedUserId,
+                    email = Email.create("any@mail.com"),
+                    hashedPassword = HashedPassword.create(PlainPassword("password1!999o"), hasher),
+                    createdAt = Instant.parse("2025-01-01T00:00:00Z"),
+                )
+
+            val result = handler.handle(ResetPasswordCommand("expired-token", "NewPassword1!"))
+
+            result.shouldBeLeft(ResetPasswordError.TokenExpired)
+            coVerify(exactly = 0) { users.findById(any()) }  // не дошли до юзера
+            coVerify(exactly = 0) { users.save(any()) }
         }
     })
