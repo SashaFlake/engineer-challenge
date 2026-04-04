@@ -57,6 +57,7 @@ readinessProbe:
 env:
   JWT_ISSUER: "auth-service"
   JWT_AUDIENCE: "auth-service-users"
+  CORS_ALLOWED_HOSTS: "http://localhost:3000"
 
 secrets:
   # JWT secret — override via --set secrets.JWT_SECRET=... or values-prod.yaml
