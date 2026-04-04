@@ -1,0 +1,44 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/sashaflake/auth-service
+  tag: "1.0.0"
+  pullPolicy: Always
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: auth.example.com
+      paths:
+        - path: /graphql
+          pathType: Prefix
+        - path: /graphiql
+          pathType: Prefix
+  tls:
+    - secretName: auth-service-tls
+      hosts:
+        - auth.example.com
+
+env:
+  JWT_ISSUER: "auth-service-prod"
+  JWT_AUDIENCE: "auth-service-users"
+
+# secrets.JWT_SECRET — задаётся через CI/CD: --set secrets.JWT_SECRET=$JWT_SECRET
