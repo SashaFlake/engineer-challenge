@@ -22,6 +22,7 @@ ingress:
 env:
   JWT_ISSUER: "auth-service-test"
   JWT_AUDIENCE: "auth-service-users-test"
+  CORS_ALLOWED_HOSTS: "http://localhost:3000,https://app.test.example.com"
 
 secrets:
   JWT_SECRET: "test-secret-not-for-production"
