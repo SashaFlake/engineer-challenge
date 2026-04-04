@@ -1,0 +1,12 @@
+Auth Service deployed successfully!
+
+Get the application URL:
+{{- if .Values.ingress.enabled }}
+  http{{ if .Values.ingress.tls }}s{{ end }}://{{ (index .Values.ingress.hosts 0).host }}/graphql
+{{- else }}
+  kubectl port-forward svc/{{ include "auth-service.fullname" . }} 8080:{{ .Values.service.port }}
+  Then open: http://localhost:8080/graphiql
+{{- end }}
+
+Metrics endpoint: /metrics
+Prometheus scraping: enabled via pod annotations
