@@ -25,10 +25,11 @@ import com.sashaflake.infrastructure.plugins.appMicrometerRegistry
 import io.ktor.server.application.Application
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
 import io.lettuce.core.RedisClient
-import io.lettuce.core.api.coroutines
+import io.lettuce.core.api.StatefulRedisConnection
 import org.koin.dsl.module
 import org.koin.dsl.onClose
 import java.time.Clock
+
 @OptIn(ExperimentalLettuceCoroutinesApi::class)
 fun appModule(app: Application) =
     module {
@@ -57,7 +58,9 @@ fun appModule(app: Application) =
                     val port = app.environment.config.property("storage.dragonfly.port").getString()
                     RedisClient.create("redis://$host:$port")
                 } onClose { it?.shutdown() }
-                single { get<RedisClient>().connect().coroutines() }
+                single<StatefulRedisConnection<String, String>> {
+                    get<RedisClient>().connect()
+                } onClose { it?.close() }
                 single<UserRepository> { DragonflyUserRepository(get()) }
                 single<PasswordResetTokenRepository> { DragonflyPasswordResetTokenRepository(get()) }
             }
