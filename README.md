@@ -6,7 +6,7 @@
 
 | Слой | Технология | Обоснование |
 |---|---|---|
-| Язык | Kotlin (JVM 21) | Выразительная система типов, value classes для DDD, нативный coroutines support |
+| Язык | Kotlin (JVM 21) | Выразительная система типов, value classes для DDD, нативный coroutines support (см. [ADR-001](ADR/ADR-001%20-%20%D0%92%D1%8B%D0%B1%D0%BE%D1%80%20%D1%81%D1%82%D0%B5%D0%BA%D0%B0%20%D0%B8%20%D0%BF%D0%BB%D0%B0%D1%82%D1%84%D0%BE%D1%80%D0%BC%D1%8B.md)) |
 | Фреймворк | Ktor (async, lightweight) | Минимальный overhead, нет магии — все явно (см. [ADR-003](ADR/ADR-003-framework.md)) |
 | Транспорт | GraphQL (graphql-kotlin) | Единый typed API, schema-first, introspection (см. [ADR-002](ADR/ADR-002-transport-protocol.md)) |
 | Хранилище | DragonflyDB (Redis-compat) | In-memory, token storage, drop-in Redis замена (см. [ADR-004](ADR/ADR-004-persistence-layer.md)) |
@@ -14,7 +14,19 @@
 | Observability | Prometheus + Grafana | Стандартные порты (9090 / 3000), pull-модель метрик |
 | IaC | Docker Compose + Helm | Локальный стенд + K8s-деплой |
 
-Альтернативы рассматривались в ADR: Spring Boot (отклонён — избыточен), REST (отклонён — см. [ADR-002](ADR/ADR-002-transport-protocol.md)), PostgreSQL (отклонён для токенов — см. [ADR-004](ADR/ADR-004-persistence-layer.md)).
+## Итерации разработки
+
+Решение развивалось последовательно, чтобы не запускать инфраструктуру раньше, чем домен.
+
+**Итерация 1 — In-memory адаптеры**
+
+Порты `UserRepository`, `TokenRepository` реализованы через `ConcurrentHashMap`. Позволяет разрабатывать и тестировать доменную логику без Docker, доменные тесты запускаются без внешних зависимостей.
+
+**Итерация 2 — DragonflyDB адаптеры**
+
+Порты заменяются новыми адаптерами поверх DragonflyDB (Redis-протокол). Доменный модуль не меняется — подмена происходит исключительно в модуле `server/`. Инфраструктурные тесты используют Testcontainers для запуска реального DragonflyDB.
+
+Такое разделение является следствием Ports & Adapters: домен не знает ничего о хранилище.
 
 ## Архитектура
 
@@ -149,35 +161,35 @@ helm upgrade --install auth-service ./helm \
 
 ## Architecture Decision Records
 
-Ключевые архитектуကрные решения задокументированы в [`ADR/`](ADR/):
+Ключевые архитектурные решения задокументированы в [`ADR/`](ADR/):
 
 | # | Решение |
 |---|---|
-| [ADR-001](ADR/ADR-001%20-%20%D0%92%D1%8B%D0%B1%D0%BE%D1%80%20%D1%81%D1%82%D0%B5%D0%BA%D0%B0%20%D0%B8%20%D0%BF%D0%BB%D0%B0%D1%82%D1%84%D0%BE%D1%80%D0%BC%D1%8B.md) | Выбоကр стека и платформы (Kotlin + Ktor) |
-| [ADR-002](ADR/ADR-002-transport-protocol.md) | Транспоကртный протокол (GraphQL vs REST vs gRPC) |
+| [ADR-001](ADR/ADR-001%20-%20%D0%92%D1%8B%D0%B1%D0%BE%D1%80%20%D1%81%D1%82%D0%B5%D0%BA%D0%B0%20%D0%B8%20%D0%BF%D0%BB%D0%B0%D1%82%D1%84%D0%BE%D1%80%D0%BC%D1%8B.md) | Выбор стека и платформы (Kotlin + Ktor) |
+| [ADR-002](ADR/ADR-002-transport-protocol.md) | Транспортный протокол (GraphQL vs REST vs gRPC) |
 | [ADR-003](ADR/ADR-003-framework.md) | Выбор фреймворка (Ktor vs Spring Boot) |
-| [ADR-004](ADR/ADR-004-persistence-layer.md) | Слой персисကтентности (DragonflyDB vs PostgreSQL) |
-| [ADR-005](ADR/ADR-005-rate-limiting.md) | Rate limiting (Nginx — реализовано; DragonflyDB — запланиကровано) |
+| [ADR-004](ADR/ADR-004-persistence-layer.md) | Слой персистентности (DragonflyDB vs PostgreSQL) |
+| [ADR-005](ADR/ADR-005-rate-limiting.md) | Rate limiting (Nginx — реализовано; DragonflyDB — запланировано) |
 
 ## Trade-offs
 
-| Решение | Что выиграли | Что потеကряли |
+| Решение | Что выиграли | Что потеряли |
 |---|---|---|
-| DragonflyDB вместо PostgreSQL | Скоကрость, вကстကроенный TTL для токенов | Нет ACID-тကранзакций между ကразными типами данных |
-| GraphQL вмесကто REST | Типизиကрованный контကракт, introspection | Сложнее кэшиကровать, HTTP-кэш не пကрименим напကрямую |
-| Ktor вместо Spring Boot | Минимальный overhead, явная конфигуကрация | Меньше готовых интегကраций «из коကробки» |
-| Nginx для rate limiting (без DragonflyDB-слоя) | Edge-защита без кода в пကриложении | Нет защиты от бကрутфоကрကса по email с ကразных IP (планиကруетကся добавить) |
+| DragonflyDB вместо PostgreSQL | Скорость, встроенный TTL для токенов | Нет ACID-транзакций между разными типами данных |
+| GraphQL вместо REST | Типизированный контракт, introspection | Сложнее кэшировать, HTTP-кэш не применим напрямую |
+| Ktor вместо Spring Boot | Минимальный overhead, явная конфигурация | Меньше готовых интеграций «из коробки» |
+| Nginx для rate limiting (без DragonflyDB-слоя) | Edge-защита без кода в приложении | Нет защиты от брутфорса по email с разных IP (планируется добавить) |
 
 ## Следующие шаги (production)
 
-- **Distributed tracing**: добавить OpenTelemetry SDK → экကспоကрт в Jaeger или Grafana Tempo; тကрейကсы уже ကстကруктуကриကрованы по correlation ID в логах
-- **Per-email rate limiting** чеကрез DragonflyDB: `INCR rl:{op}:{email}` + `EXPIRE` — запланиကровано по [ADR-005](ADR/ADR-005-rate-limiting.md), поကрт `RateLimiter` уже выделен
-- **Event-driven нотификации**: email пကри reset-password чеကрез message broker (Kafka / RabbitMQ)
-- **mTLS между nginx и backend**: cert-manager + Vault PKI для автоматической ကротации сеကртификатов
+- **Distributed tracing**: добавить OpenTelemetry SDK → экспорт в Jaeger или Grafana Tempo; трейсы уже структурированы по correlation ID в логах
+- **Per-email rate limiting** через DragonflyDB: `INCR rl:{op}:{email}` + `EXPIRE` — запланировано по [ADR-005](ADR/ADR-005-rate-limiting.md), порт `RateLimiter` уже выделен
+- **Event-driven нотификации**: email при reset-password через message broker (Kafka / RabbitMQ)
+- **mTLS между nginx и backend**: cert-manager + Vault PKI для автоматической ротации сертификатов
 - **GitOps-деплой**: Argo CD watching `helm/` + `values-prod.yaml`
 - **Secrets management**: External Secrets Operator + HashiCorp Vault
-- **Policy-driven networking**: замена ကручных NetworkPolicy на Cilium с L7-политиками
+- **Policy-driven networking**: замена ручных NetworkPolicy на Cilium с L7-политиками
 
-## Иကспользование ИИ
+## Использование ИИ
 
-В пကроцеကсကсе ကработы иကспользовалကся Perplexity AI — в ကроли **engineering assistant**, а не decision-maker. Подကробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
+В процессе работы использовался Perplexity AI — в роли **engineering assistant**, а не decision-maker. Подробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
