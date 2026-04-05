@@ -1,114 +1,172 @@
-# Advanced Engineer Challenge
+# Advanced Engineer Challenge — Auth Service
 
-Не забудьте сперва поставить Star. Спасибо!
+> Это решение инженерного челленджа. Оригинальное задание сохранено в [CHALLENGE.md](CHALLENGE.md).
 
-UPD: Вакансия немного переехала. Смотрите ссылку.
+## Стек
 
-Этот репозиторий — инженерный челлендж для кандидатов на backend/fullstack позиции.
+| Слой | Технология | Обоснование |
+|---|---|---|
+| Язык | Kotlin (JVM 21) | Выразительная система типов, value classes для DDD, нативный coroutines support |
+| Фреймворк | Ktor (async, lightweight) | Минимальный overhead, нет магии — все явно (см. [ADR-003](ADR/ADR-003-framework.md)) |
+| Транспорт | GraphQL (graphql-kotlin) | Единый typed API, schema-first, introspection (см. [ADR-002](ADR/ADR-002-transport-protocol.md)) |
+| Хранилище | DragonflyDB (Redis-compat) | In-memory, rate-limit counters + token storage, drop-in Redis замена (см. [ADR-004](ADR/ADR-004-persistence-layer.md)) |
+| Reverse proxy | Nginx | TLS termination, rate-limiting на уровне сети |
+| Observability | Prometheus + Grafana | Стандартные порты (9090 / 3000), pull-модель метрик |
+| IaC | Docker Compose + Helm | Локальный стенд + K8s-деплой |
 
-Задача специально узкая по продукту, но широкая по архитектуре: мы оцениваем не «как быстро собрать формы логина», а то, как вы проектируете систему.
+Альтернативы рассматривались в ADR: Spring Boot (отклонён — избыточен), REST (отклонён — см. [ADR-002](ADR/ADR-002-transport-protocol.md)), PostgreSQL (отклонён для токенов — см. [ADR-004](ADR/ADR-004-persistence-layer.md)).
 
-## Контекст
+## Архитектура
 
-Вам нужно реализовать модуль аутентификации для 3 пользовательских сценариев:
-1. Регистрация
-2. Авторизация
-3. Восстановление пароля
+### Request flow
 
-UI-дизайн (https://www.figma.com/design/31KetUbya482vMSGgyiNIf/Orbitto-%7C-Service--Copy-?node-id=102-12806&t=TMlkJ3c3j3vJF5fb-4) уже подготовлен и будет отправной точкой для клиентской части.
+```
+Client → Nginx (80/443) → auth-backend (:8080) → DragonflyDB (:6379)
+                 ↓
+         nginx-exporter (:9113)
+                 ↓
+           Prometheus (:9090) ← dragonfly-exporter (:9121)
+                 ↓                  ← cadvisor (:8081)
+            Grafana (:3000)
+```
 
-## Что важно
+```mermaid
+graph LR
+    Client -->|HTTP/HTTPS| Nginx
+    Nginx -->|proxy_pass :8080| App[auth-backend]
+    App -->|Redis protocol :6379| Dragonfly[(DragonflyDB)]
+    App -->|/metrics| Prometheus
+    Nginx -->|stub_status| NginxExporter[nginx-exporter]
+    Dragonfly -->|redis metrics| DragonflyExporter[dragonfly-exporter]
+    NginxExporter --> Prometheus
+    DragonflyExporter --> Prometheus
+    cAdvisor --> Prometheus
+    Prometheus --> Grafana
+```
 
-Решение должно демонстрировать инженерную зрелость:
-- DDD (явные bounded context, модель домена, язык предметной области)
-- CQRS (разделение команд и запросов)
-- IaC (воспроизводимое окружение инфраструктуры)
-- Осознанный выбор языка и стека (язык выбираете на своё усмотрение, но выбор нужно аргументировать)
+### DDD — bounded context
 
-`CRUD + controller + stock REST auth по документации` не считается целевым уровнем решения для этого челленджа.
+Доменный модуль (`domain/`) содержит:
+- **Aggregates**: `User`, `ResetToken` — инварианты хранятся внутри агрегатов
+- **Value Objects**: `Email`, `Password` (bcrypt-хеш), `TokenId`
+- **Domain Services**: `PasswordHasher`, `TokenGenerator`
+- **Ports** (интерфейсы): `UserRepository`, `TokenRepository`, `RateLimiter`
 
-## Обязательные требования
+Инфраструктурный модуль (`server/`) содержит **Adapters** — реализации портов поверх DragonflyDB.
 
-1. Архитектура
-- Покажите доменную модель и границы контекстов.
-- Выделите command side и query side (даже если в упрощенном виде).
-- Опишите ключевые инварианты и бизнес-правила (например, правила reset-token, валидация пароля, ограничения на повторную отправку).
+### CQRS
 
-2. API/протокол взаимодействия
-- Предпочтительный уровень: `gRPC` и/или `GraphQL`.
-- `Только REST` допустим исключительно при сильной архитектурной аргументации, иначе это будет существенным минусом.
+| Command Side | Query Side |
+|---|---|
+| `RegisterUserCommand` | `GetUserByEmailQuery` |
+| `LoginCommand` | `ValidateTokenQuery` |
+| `RequestPasswordResetCommand` | — |
+| `ConfirmPasswordResetCommand` | — |
 
-3. Infrastructure as Code
-- Запуск окружения должен быть описан кодом.
-- Минимум: локально воспроизводимый стенд (например, Docker Compose).
-- Плюс в оценке: Terraform/Kubernetes manifests/Helm.
+Commands мутируют состояние через агрегаты и сохраняют через репозитории. Queries читают напрямую, без side-effects.
 
-4. Безопасность
-- Без хранения паролей в открытом виде.
-- Корректная работа с токенами/сессиями.
-- Защита базовых auth-флоу (rate limiting, expiration, replay/abuse considerations).
+### Ключевые бизнес-инварианты
 
-5. Наблюдаемость и качество
-- Логи, метрики или трейсинг (минимум один из блоков).
-- Тесты критичных участков (доменные правила, auth-флоу, интеграционные точки).
+- Email уникален в рамках системы
+- Пароль хранится только в виде bcrypt-хеша
+- Reset-токен: одноразовый, TTL = 15 минут, повторная отправка блокируется rate limiter'ом
+- Rate limiting на login/register/reset: реализован через DragonflyDB (sliding window), конфигурируется через nginx (см. [ADR-005](ADR/ADR-005-rate-limiting.md))
 
-6. Технологические решения
-- Язык программирования и фреймворки выбираете самостоятельно.
-- В `README` обязательно зафиксируйте, почему выбрали именно этот стек и какие альтернативы рассматривали.
+## Запуск
 
-## Ограничения и анти-паттерны
+### Требования
 
-Следующие подходы считаются слабым решением:
-- Полностью «коробочный» auth-провайдер без вашей архитектурной проработки домена.
-- Копирование шаблонного туториала без обоснования trade-offs.
-- Монолитный слой handlers/controllers без разделения доменной и инфраструктурной логики.
+- Docker ≥ 24
+- Docker Compose ≥ 2.20
 
-Можно использовать библиотеки для криптографии, JWT, транспорта и т.д., но архитектурные решения должны быть вашими.
+### Локально (Docker Compose)
 
-## Что нужно сдать
+```bash
+# Клонировать и запустить
+git clone https://github.com/SashaFlake/engineer-challenge.git
+cd engineer-challenge
 
-1. Исходный код в вашем fork.
-2. Обновленный `README` в вашем fork с:
-- как запустить проект;
-- архитектурная схема (можно Mermaid/PlantUML);
-- объяснение, где в решении DDD, CQRS и IaC;
-- ключевые компромиссы (trade-offs);
-- что сделали бы следующим шагом в production-версии.
-3. Минимальный набор тестов и инструкции по их запуску.
+docker compose up --build
+```
 
-## Формат выполнения
+| Сервис | URL |
+|---|---|
+| GraphQL API (через Nginx) | http://localhost/graphql |
+| GraphQL Playground | http://localhost/graphiql |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 (admin / admin) |
+| cAdvisor | http://localhost:8081 |
 
-1. Сделайте fork этого репозитория.
-2. Пройдите Pinterest-челлендж:
-- соберите `moodboard`;
-- соберите `anti-moodboard`.
-3. Реализуйте решение в своем fork.
-4. Оформите результат в `README`.
-5. Отправьте 3 ссылки в отклике:
-- ссылка на `moodboard`;
-- ссылка на `anti-moodboard`;
-- ссылка на ваш fork.
+### Kubernetes (Helm)
+
+```bash
+# Установить чарт
+helm upgrade --install auth-service ./helm \
+  --set app.jwtSecret="your-secret" \
+  --namespace auth --create-namespace
+```
+
+Helm-чарты находятся в директории [`helm/`](helm/).
+
+## Тесты
+
+Тесты покрывают **domain** (unit) и **infrastructure** (integration с реальным DragonflyDB через Testcontainers).
+
+```bash
+# Запустить все тесты
+./gradlew test
+
+# Только доменные (без Docker)
+./gradlew :domain:test
+
+# Только инфраструктурные
+./gradlew :server:test
+```
+
+Тестовые сценарии:
+- Валидация инвариантов `Password`, `Email`, `ResetToken`
+- Полный auth-флоу: register → login → reset-password
+- Rate limiting: превышение лимита возвращает `429`
+
+## Observability
+
+После `docker compose up` доступны:
+
+- **Prometheus** → http://localhost:9090 — метрики приложения, nginx, dragonfly, контейнеров
+- **Grafana** → http://localhost:3000 — преднастроенные дашборды (provisioning в `ops/grafana/provisioning/`)
+
+Метрики приложения экспортируются на `/metrics` (формат Prometheus). Grafana подключается к Prometheus автоматически через provisioning.
+
+## Architecture Decision Records
+
+Ключевые архитектурные решения задокументированы в [`ADR/`](ADR/):
+
+| # | Решение |
+|---|---|
+| [ADR-001](ADR/ADR-001%20-%20Выбор%20стека%20и%20платформы.md) | Выбор стека и платформы (Kotlin + Ktor) |
+| [ADR-002](ADR/ADR-002-transport-protocol.md) | Транспортный протокол (GraphQL vs REST vs gRPC) |
+| [ADR-003](ADR/ADR-003-framework.md) | Выбор фреймворка (Ktor vs Spring Boot) |
+| [ADR-004](ADR/ADR-004-persistence-layer.md) | Слой персистентности (DragonflyDB vs PostgreSQL) |
+| [ADR-005](ADR/ADR-005-rate-limiting.md) | Rate limiting (Nginx + DragonflyDB) |
+
+## Trade-offs
+
+| Решение | Что выиграли | Что потеряли |
+|---|---|---|
+| DragonflyDB вместо PostgreSQL | Скорость, встроенный TTL для токенов | Нет ACID-транзакций между разными типами данных |
+| GraphQL вместо REST | Типизированный контракт, introspection | Сложнее кэшировать, HTTP-кэш не применим напрямую |
+| Ktor вместо Spring Boot | Минимальный overhead, явная конфигурация | Меньше готовых интеграций «из коробки» |
+| In-process rate limiting + Nginx | Два уровня защиты | Дублирование логики |
+
+## Следующие шаги (production)
+
+- Persistent storage для пользователей (PostgreSQL) + DragonflyDB только для сессий/токенов
+- Distributed tracing (OpenTelemetry → Jaeger/Tempo)
+- Event-driven нотификации (email при reset-password) через message broker
+- mTLS между nginx и backend
+- Helm: настройка HPA, PodDisruptionBudget, NetworkPolicy
+- Secrets management (Vault / K8s Secrets с внешним провайдером)
 
 ## Использование ИИ
 
-- Использование ИИ-инструментов в рамках челленджа разрешено.
-- Если используете ИИ, добавьте в ваш fork папку `.agents`, чтобы было видно, каким образом вы строили процесс решения.
-
-## Критерии оценки
-
-1. Архитектурное мышление (DDD/CQRS/IaC).
-2. Качество инженерных решений и аргументация trade-offs.
-3. Надежность и безопасность auth-флоу.
-4. Чистота кода и тестовое покрытие критичных сценариев.
-5. Операбельность: насколько легко поднять и проверить решение.
-
-## Бонусные сигналы
-
-- Event-driven взаимодействие между компонентами.
-- Service mesh / policy-driven networking (если уместно и обосновано).
-- Продуманная стратегия эволюции схемы данных и backward compatibility.
-- ADR (Architecture Decision Records) для ключевых решений.
-
-## Важно
-
-Нас интересует не «идеальный продакшен за вечер», а качество инженерного мышления и способность строить систему осознанно.
+В процессе работы использовался Perplexity AI. Подробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
