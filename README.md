@@ -82,10 +82,8 @@ Commands мутируют состояние через агрегаты и со
 ### Локально (Docker Compose)
 
 ```bash
-# Клонировать и запустить
 git clone https://github.com/SashaFlake/engineer-challenge.git
 cd engineer-challenge
-
 docker compose up --build
 ```
 
@@ -99,21 +97,34 @@ docker compose up --build
 
 ### Kubernetes (Helm)
 
+Helm-чарты находятся в директории [`helm/`](helm/).
+
 ```bash
-# Установить чарт
+# Установить чарт в namespace auth
 helm upgrade --install auth-service ./helm \
   --set app.jwtSecret="your-secret" \
   --namespace auth --create-namespace
 ```
 
-Helm-чарты находятся в директории [`helm/`](helm/).
+**Что описано в Helm-чарте:**
+- `Deployment` с configurable `replicaCount` и `resources` (requests/limits)
+- `Service` (ClusterIP) + `Ingress` с аннотациями для nginx-ingress-controller
+- `ConfigMap` для передачи конфигурации приложения
+- `Secret` для JWT-секрета (ссылка через `secretKeyRef`)
+- `HorizontalPodAutoscaler` (CPU ≥ 70% → scale out)
+- `PodDisruptionBudget` (`minAvailable: 1`) для zero-downtime rolling update
+- `NetworkPolicy`: ingress только от nginx-controller, egress только к DragonflyDB
+- `ServiceMonitor` для автоматического обнаружения эндпоинта `/metrics` оператором Prometheus (kube-prometheus-stack)
+- `livenessProbe` / `readinessProbe` по `/health`
+
+**Следующий шаг в K8s:** вынести DragonflyDB как отдельный StatefulSet с PVC (`storageClass: fast-ssd`), либо использовать managed Redis-совместимый сервис (Upstash, Redis Cloud) через ExternalSecret оператор.
 
 ## Тесты
 
 Тесты покрывают **domain** (unit) и **infrastructure** (integration с реальным DragonflyDB через Testcontainers).
 
 ```bash
-# Запустить все тесты
+# Все тесты
 ./gradlew test
 
 # Только доменные (без Docker)
@@ -143,7 +154,7 @@ Helm-чарты находятся в директории [`helm/`](helm/).
 
 | # | Решение |
 |---|---|
-| [ADR-001](ADR/ADR-001%20-%20Выбор%20стека%20и%20платформы.md) | Выбор стека и платформы (Kotlin + Ktor) |
+| [ADR-001](ADR/ADR-001%20-%20%D0%92%D1%8B%D0%B1%D0%BE%D1%80%20%D1%81%D1%82%D0%B5%D0%BA%D0%B0%20%D0%B8%20%D0%BF%D0%BB%D0%B0%D1%82%D1%84%D0%BE%D1%80%D0%BC%D1%8B.md) | Выбор стека и платформы (Kotlin + Ktor) |
 | [ADR-002](ADR/ADR-002-transport-protocol.md) | Транспортный протокол (GraphQL vs REST vs gRPC) |
 | [ADR-003](ADR/ADR-003-framework.md) | Выбор фреймворка (Ktor vs Spring Boot) |
 | [ADR-004](ADR/ADR-004-persistence-layer.md) | Слой персистентности (DragonflyDB vs PostgreSQL) |
@@ -160,13 +171,13 @@ Helm-чарты находятся в директории [`helm/`](helm/).
 
 ## Следующие шаги (production)
 
-- Persistent storage для пользователей (PostgreSQL) + DragonflyDB только для сессий/токенов
-- Distributed tracing (OpenTelemetry → Jaeger/Tempo)
-- Event-driven нотификации (email при reset-password) через message broker
-- mTLS между nginx и backend
-- Helm: настройка HPA, PodDisruptionBudget, NetworkPolicy
-- Secrets management (Vault / K8s Secrets с внешним провайдером)
+- **Distributed tracing**: добавить OpenTelemetry SDK → экспорт в Jaeger или Grafana Tempo; трейсы уже структурированы по correlation ID в логах
+- **Event-driven нотификации**: email при reset-password через message broker (Kafka / RabbitMQ) — отдельный notification-сервис в том же K8s namespace
+- **mTLS между nginx и backend**: cert-manager + Vault PKI для автоматической ротации сертификатов; nginx-ingress-controller сконфигурировать через `proxy-ssl-*` аннотации
+- **GitOps-деплой**: Argo CD watching `helm/` + `values-prod.yaml` в отдельном infra-репозитории; каждый merge в main — автоматический sync
+- **Secrets management**: External Secrets Operator + HashiCorp Vault (или AWS Secrets Manager); `SecretStore` ссылается на Vault path, `ExternalSecret` автоматически синхронизирует K8s Secret
+- **Policy-driven networking**: замена ручных NetworkPolicy на Cilium с L7-политиками; позволяет ограничить трафик до конкретных GraphQL-операций
 
 ## Использование ИИ
 
-В процессе работы использовался Perplexity AI. Подробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
+В процессе работы использовался Perplexity AI — в роли **engineering assistant**, а не decision-maker. Подробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
