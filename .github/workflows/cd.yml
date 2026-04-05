@@ -75,10 +75,14 @@ jobs:
       - name: Verify cluster connection
         run: kubectl get nodes
 
-      - name: Resolve chart dependencies (OCI via Docker Hub)
-        # bitnami/redis идёт через OCI: oci://registry-1.docker.io/bitnamicharts
-        # helm repo add здесь не нужен, dependency update работает напрямую с OCI
-        run: helm dependency update ./helm/auth-service
+      - name: Resolve chart dependencies
+        run: |
+          echo "=== Chart.yaml dependencies ==="
+          cat helm/auth-service/Chart.yaml
+          echo "=== Running dependency update ==="
+          helm dependency update ./helm/auth-service --debug
+          echo "=== charts/ directory after update ==="
+          ls -la helm/auth-service/charts/ || echo "charts/ dir is empty or missing"
 
       - name: Deploy to k3s
         env:
