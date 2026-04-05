@@ -75,13 +75,10 @@ jobs:
       - name: Verify cluster connection
         run: kubectl get nodes
 
-      - name: Add Bitnami repo (for Dragonfly subchart)
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update
-
-      - name: Build chart dependencies
-        run: helm dependency build ./helm/auth-service
+      - name: Resolve chart dependencies (OCI via Docker Hub)
+        # bitnami/redis идёт через OCI: oci://registry-1.docker.io/bitnamicharts
+        # helm repo add здесь не нужен, dependency update работает напрямую с OCI
+        run: helm dependency update ./helm/auth-service
 
       - name: Deploy to k3s
         env:
