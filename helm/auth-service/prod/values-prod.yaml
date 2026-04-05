@@ -26,7 +26,7 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: letsencrypt-prod
     # Edge rate limiting — flood/DDoS protection (per IP, stateless).
-    # Precise per-user/per-email limits are enforced at the application layer via Dragonfly.
+    # Precise per-user/per-email limits enforced at app layer via Dragonfly.
     # See ADR-004 for the full two-layer strategy.
     nginx.ingress.kubernetes.io/limit-rps: "20"
     nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
@@ -46,9 +46,31 @@ env:
   JWT_AUDIENCE: "auth-service-users"
   CORS_ALLOWED_HOSTS: "https://app.example.com"
   # Dragonfly as shared state for distributed rate limiting across replicas.
-  # See ADR-003 (persistence layer) and ADR-004 (rate limiting strategy).
+  # See ADR-003 (persistence) and ADR-004 (rate limiting strategy).
   STORAGE_BACKEND: "dragonfly"
-  DRAGONFLY_HOST: "dragonfly.default.svc.cluster.local"
+  DRAGONFLY_HOST: "dragonfly-master.default.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
+
+# In prod, prefer a managed Redis-compatible service.
+# Set dragonfly.enabled=false and configure DRAGONFLY_HOST via env above.
+dragonfly:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9121"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      # Enable if kube-prometheus-stack is installed in the cluster
+      enabled: false
+  replica:
+    replicaCount: 0
 
 # secrets.JWT_SECRET — задаётся через CI/CD: --set secrets.JWT_SECRET=$JWT_SECRET

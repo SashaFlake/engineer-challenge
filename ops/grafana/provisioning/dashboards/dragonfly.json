@@ -1,0 +1,100 @@
+{
+  "title": "Dragonfly / Redis",
+  "schemaVersion": 16,
+  "version": 1,
+  "refresh": "30s",
+  "tags": ["redis", "dragonfly"],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(redis_up, instance)",
+        "label": "Instance",
+        "refresh": 2,
+        "hide": 0,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Uptime",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "redis_uptime_in_seconds{instance=~\"$instance\"}", "legendFormat": "uptime"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "unit": "s"}
+    },
+    {
+      "type": "stat",
+      "title": "Connected Clients",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "redis_connected_clients{instance=~\"$instance\"}", "legendFormat": "clients"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "stat",
+      "title": "Memory Used",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "redis_memory_used_bytes{instance=~\"$instance\"}", "legendFormat": "memory"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "unit": "bytes"}
+    },
+    {
+      "type": "stat",
+      "title": "Keyspace Hits/s",
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rate(redis_keyspace_hits_total{instance=~\"$instance\"}[1m])", "legendFormat": "hits/s"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "stat",
+      "title": "Keyspace Misses/s",
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rate(redis_keyspace_misses_total{instance=~\"$instance\"}[1m])", "legendFormat": "misses/s"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Commands / sec",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rate(redis_commands_processed_total{instance=~\"$instance\"}[1m])", "legendFormat": "commands/s"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Used Bytes",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "redis_memory_used_bytes{instance=~\"$instance\"}", "legendFormat": "used"},
+        {"expr": "redis_memory_max_bytes{instance=~\"$instance\"}", "legendFormat": "max"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "bytes"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate Limiting Counters — Keys Total",
+      "description": "Total keys in Dragonfly — includes rate limit counters. Spike = burst of requests.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "redis_db_keys{instance=~\"$instance\"}", "legendFormat": "keys (db{{db}})"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Keyspace Hit Ratio",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{
+        "expr": "rate(redis_keyspace_hits_total{instance=~\"$instance\"}[1m]) / (rate(redis_keyspace_hits_total{instance=~\"$instance\"}[1m]) + rate(redis_keyspace_misses_total{instance=~\"$instance\"}[1m]))",
+        "legendFormat": "hit ratio"
+      }],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}}
+    }
+  ]
+}

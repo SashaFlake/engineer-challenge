@@ -1,0 +1,98 @@
+{
+  "title": "Nginx",
+  "schemaVersion": 16,
+  "version": 1,
+  "refresh": "30s",
+  "tags": ["nginx"],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(nginx_up, instance)",
+        "label": "Instance",
+        "refresh": 2,
+        "hide": 0,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Nginx Up",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "nginx_up{instance=~\"$instance\"}", "legendFormat": "up"}],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"]},
+        "colorMode": "background",
+        "mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Active Connections",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "nginx_connections_active{instance=~\"$instance\"}", "legendFormat": "active"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "stat",
+      "title": "Waiting Connections",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "nginx_connections_waiting{instance=~\"$instance\"}", "legendFormat": "waiting"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "stat",
+      "title": "Total Requests",
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "nginx_http_requests_total{instance=~\"$instance\"}", "legendFormat": "total"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "stat",
+      "title": "Handled Connections",
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "nginx_connections_handled{instance=~\"$instance\"}", "legendFormat": "handled"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests / sec",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rate(nginx_http_requests_total{instance=~\"$instance\"}[1m])", "legendFormat": "req/s"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Connections",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "nginx_connections_active{instance=~\"$instance\"}", "legendFormat": "active"},
+        {"expr": "nginx_connections_reading{instance=~\"$instance\"}", "legendFormat": "reading"},
+        {"expr": "nginx_connections_writing{instance=~\"$instance\"}", "legendFormat": "writing"},
+        {"expr": "nginx_connections_waiting{instance=~\"$instance\"}", "legendFormat": "waiting"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate Limit Drops — Accepted vs Handled",
+      "description": "Difference between accepted and handled connections indicates dropped requests (rate limited or errored).",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "rate(nginx_connections_accepted{instance=~\"$instance\"}[1m])", "legendFormat": "accepted/s"},
+        {"expr": "rate(nginx_connections_handled{instance=~\"$instance\"}[1m])", "legendFormat": "handled/s"},
+        {"expr": "rate(nginx_connections_accepted{instance=~\"$instance\"}[1m]) - rate(nginx_connections_handled{instance=~\"$instance\"}[1m])", "legendFormat": "dropped/s (rate limited)"}
+      ]
+    }
+  ]
+}

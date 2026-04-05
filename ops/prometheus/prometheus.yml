@@ -10,3 +10,17 @@ scrape_configs:
   - job_name: "cadvisor"
     static_configs:
       - targets: ["cadvisor:8080"]
+
+  # Dragonfly (Redis-compatible KV store) via redis_exporter.
+  # Exposes: connected_clients, commands_total, keyspace_hits/misses,
+  # memory_used_bytes — critical for rate limiting counter visibility.
+  - job_name: "dragonfly"
+    static_configs:
+      - targets: ["dragonfly-exporter:9121"]
+
+  # Nginx via nginx-prometheus-exporter (reads stub_status).
+  # Exposes: connections_active, requests_total, connections_handled/dropped.
+  # Rate limit hits visible as dropped connections spike.
+  - job_name: "nginx"
+    static_configs:
+      - targets: ["nginx-exporter:9113"]

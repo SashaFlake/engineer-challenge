@@ -38,7 +38,7 @@ autoscaling:
   maxReplicas: 3
   targetCPUUtilizationPercentage: 70
 
-# /health endpoint does not exist in this service — use /metrics (Micrometer/Prometheus)
+# /health endpoint does not exist — use /metrics (Micrometer/Prometheus)
 livenessProbe:
   httpGet:
     path: /metrics
@@ -59,14 +59,12 @@ env:
   JWT_ISSUER: "auth-service"
   JWT_AUDIENCE: "auth-service-users"
   CORS_ALLOWED_HOSTS: "http://localhost:3000"
-  # Default to in-memory storage for local/test environments.
-  # Override with STORAGE_BACKEND=dragonfly in prod.
+  # Default to in-memory for local/test. Override with dragonfly in prod.
   STORAGE_BACKEND: "memory"
   DRAGONFLY_HOST: "dragonfly"
   DRAGONFLY_PORT: "6379"
 
 secrets:
-  # JWT secret — override via --set secrets.JWT_SECRET=... or values-prod.yaml
   JWT_SECRET: ""
 
 serviceAccount:
@@ -95,7 +93,7 @@ tolerations: []
 affinity: {}
 
 # Dragonfly subchart (aliased from Bitnami Redis — Redis-protocol compatible).
-# enabled: true  — deploy Dragonfly alongside the service (default for local/test K8s)
+# enabled: true  — deploy Dragonfly alongside the service (default for dev/test K8s)
 # enabled: false — use a managed Redis-compatible service, set DRAGONFLY_HOST via env
 dragonfly:
   enabled: true
@@ -104,6 +102,15 @@ dragonfly:
     enabled: false
   master:
     persistence:
+      enabled: false
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9121"
+  metrics:
+    # Enables redis_exporter sidecar — exposes Redis/Dragonfly metrics on :9121
+    enabled: true
+    serviceMonitor:
+      # Set to true if Prometheus Operator (kube-prometheus-stack) is installed
       enabled: false
   replica:
     replicaCount: 0
