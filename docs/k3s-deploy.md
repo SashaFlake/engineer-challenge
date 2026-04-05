@@ -6,35 +6,29 @@
 git tag v1.x.x  →  GitHub Actions
                     ├── build Docker image
                     ├── push → ghcr.io/sashaflake/auth-service:<tag>
-                    └── helm upgrade --install → k3s (213.171.30.170)
+                    └── helm upgrade --install → k3s (адрес из KUBECONFIG_PROD)
                                                   └── NodePort :30081
 ```
 
-## Эндпоинты после деплоя
-
-| Путь | URL |
-|------|-----|
-| GraphQL API | http://213.171.30.170:30081/graphql |
-| GraphiQL | http://213.171.30.170:30081/graphiql |
-| Metrics | http://213.171.30.170:30081/metrics |
-
-## Требования: GitHub Secrets
+## Требуемые GitHub Secrets
 
 Настроить в **Settings → Environments → prod**:
 
 | Secret | Описание |
 |--------|----------|
-| `KUBECONFIG_PROD` | kubeconfig для подключения к k3s |
+| `KUBECONFIG_PROD` | kubeconfig для подключения к k3s (содержит адрес кластера) |
 | `JWT_SECRET_PROD` | Секрет для подписи JWT токенов |
+| `CORS_ALLOWED_HOSTS` | Разрешённые хосты для CORS, например `http://<IP>:30081` |
 
 ## Получить kubeconfig с k3s-ноды
 
 ```bash
-# На сервере 213.171.30.170
+# На сервере с k3s
 sudo cat /etc/rancher/k3s/k3s.yaml
 ```
 
-Заменить `server: https://127.0.0.1:6443` на `server: https://213.171.30.170:6443`, вставить в GitHub Secret `KUBECONFIG_PROD`.
+Заменить `server: https://127.0.0.1:6443` на `server: https://<PUBLIC_IP>:6443`,
+вставить содержимое в GitHub Secret `KUBECONFIG_PROD`.
 
 ## Запуск деплоя
 
@@ -45,7 +39,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-## Ручной деплой (если нужен)
+## Ручной деплой
 
 ```bash
 export KUBECONFIG=/path/to/k3s.yaml
@@ -57,6 +51,7 @@ helm upgrade --install auth-service ./helm/auth-service \
   -f helm/auth-service/ip/values-ip.yaml \
   --set image.tag=sha-<commit_sha> \
   --set secrets.JWT_SECRET=<your_secret> \
+  --set env.CORS_ALLOWED_HOSTS=http://<IP>:30081 \
   --namespace auth \
   --create-namespace \
   --wait
@@ -67,5 +62,5 @@ helm upgrade --install auth-service ./helm/auth-service \
 ```bash
 kubectl get pods -n auth
 kubectl get svc -n auth
-curl http://213.171.30.170:30081/metrics
+curl http://<IP>:30081/metrics
 ```

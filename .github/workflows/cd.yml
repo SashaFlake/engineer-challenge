@@ -88,14 +88,8 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/auth-service \
             --set image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set secrets.JWT_SECRET=${{ secrets.JWT_SECRET_PROD }} \
+            --set env.CORS_ALLOWED_HOSTS=${{ secrets.CORS_ALLOWED_HOSTS }} \
             --namespace auth \
             --create-namespace \
             --wait \
             --timeout 5m
-
-      - name: Print access info
-        run: |
-          echo "Service available at: http://213.171.30.170:30081"
-          echo "GraphQL endpoint:      http://213.171.30.170:30081/graphql"
-          echo "GraphiQL explorer:     http://213.171.30.170:30081/graphiql"
-          echo "Metrics:               http://213.171.30.170:30081/metrics"

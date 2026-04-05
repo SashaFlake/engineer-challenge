@@ -1,6 +1,6 @@
 # Деплой без домена — прямой доступ по IP через NodePort.
 # TLS и ingress отключены.
-# Используется для k3s-кластера по адресу 213.171.30.170
+# Адрес кластера и CORS передаются через GitHub Secrets, не хранятся в git.
 replicaCount: 1
 
 image:
@@ -34,12 +34,13 @@ serviceMonitor:
 env:
   JWT_ISSUER: "auth-service-prod"
   JWT_AUDIENCE: "auth-service-users"
-  CORS_ALLOWED_HOSTS: "http://213.171.30.170:30081"
+  # CORS_ALLOWED_HOSTS передаётся через --set env.CORS_ALLOWED_HOSTS=${{ secrets.CORS_ALLOWED_HOSTS }}
+  CORS_ALLOWED_HOSTS: ""
   STORAGE_BACKEND: "dragonfly"
   DRAGONFLY_HOST: "auth-service-dragonfly-master.auth.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
 
-# secrets.JWT_SECRET передаётся через --set secrets.JWT_SECRET=$JWT_SECRET_PROD
+# secrets.JWT_SECRET передаётся через --set secrets.JWT_SECRET=${{ secrets.JWT_SECRET_PROD }}
 secrets:
   JWT_SECRET: ""
 
