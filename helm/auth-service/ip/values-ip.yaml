@@ -1,11 +1,14 @@
 # Деплой без домена — прямой доступ по IP через NodePort.
 # TLS и ingress отключены.
 # Адрес кластера и CORS передаются через GitHub Secrets, не хранятся в git.
+#
+# Dragonfly деплоится отдельно через helm/dragonfly/.
+# dragonfly.enabled=false отключает subchart и снимает зависимость от redis chart.
 replicaCount: 1
 
 image:
   repository: ghcr.io/sashaflake/auth-service
-  # tag переопределяется из CI через --set image.tag=<sha/version>
+  # tag переопределяется из CI через --set image.tag=<version>
   tag: "latest"
   pullPolicy: Always
 
@@ -37,24 +40,14 @@ env:
   # CORS_ALLOWED_HOSTS передаётся через --set env.CORS_ALLOWED_HOSTS=${{ secrets.CORS_ALLOWED_HOSTS }}
   CORS_ALLOWED_HOSTS: ""
   STORAGE_BACKEND: "dragonfly"
-  DRAGONFLY_HOST: "auth-service-dragonfly-master.auth.svc.cluster.local"
+  # Dragonfly задеплоен отдельно в том же namespace auth
+  DRAGONFLY_HOST: "dragonfly-master.auth.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
 
 # secrets.JWT_SECRET передаётся через --set secrets.JWT_SECRET=${{ secrets.JWT_SECRET_PROD }}
 secrets:
   JWT_SECRET: ""
 
+# Subchart отключён — Dragonfly деплоится отдельно
 dragonfly:
-  enabled: true
-  architecture: standalone
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: false
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: false
-  replica:
-    replicaCount: 0
+  enabled: false

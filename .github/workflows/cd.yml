@@ -75,16 +75,7 @@ jobs:
       - name: Verify cluster connection
         run: kubectl get nodes
 
-      - name: Resolve chart dependencies
-        run: |
-          echo "=== Chart.yaml dependencies ==="
-          cat helm/auth-service/Chart.yaml
-          echo "=== Running dependency update ==="
-          helm dependency update ./helm/auth-service --debug
-          echo "=== charts/ directory after update ==="
-          ls -la helm/auth-service/charts/ || echo "charts/ dir is empty or missing"
-
-      - name: Deploy to k3s
+      - name: Deploy auth-service
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET_PROD }}
           CORS_HOSTS: ${{ secrets.CORS_ALLOWED_HOSTS }}
