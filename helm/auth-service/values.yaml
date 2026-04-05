@@ -38,9 +38,10 @@ autoscaling:
   maxReplicas: 3
   targetCPUUtilizationPercentage: 70
 
+# /health endpoint does not exist in this service — use /metrics (Micrometer/Prometheus)
 livenessProbe:
   httpGet:
-    path: /health
+    path: /metrics
     port: 8080
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -48,7 +49,7 @@ livenessProbe:
 
 readinessProbe:
   httpGet:
-    path: /health
+    path: /metrics
     port: 8080
   initialDelaySeconds: 15
   periodSeconds: 5
@@ -58,6 +59,11 @@ env:
   JWT_ISSUER: "auth-service"
   JWT_AUDIENCE: "auth-service-users"
   CORS_ALLOWED_HOSTS: "http://localhost:3000"
+  # Default to in-memory storage for local/test environments.
+  # Override with STORAGE_BACKEND=dragonfly in prod.
+  STORAGE_BACKEND: "memory"
+  DRAGONFLY_HOST: "dragonfly"
+  DRAGONFLY_PORT: "6379"
 
 secrets:
   # JWT secret — override via --set secrets.JWT_SECRET=... or values-prod.yaml
