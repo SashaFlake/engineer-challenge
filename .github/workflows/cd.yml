@@ -90,4 +90,4 @@ jobs:
             --namespace auth \
             --create-namespace \
             --wait \
-            --timeout 5m
+            --timeout 10m
