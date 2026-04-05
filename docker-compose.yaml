@@ -11,6 +11,12 @@ services:
       JWT_SECRET: "change-me-in-production"
       JWT_ISSUER: "engineer-challenge"
       JWT_AUDIENCE: "engineer-challenge-users"
+      STORAGE_BACKEND: "dragonfly"
+      DRAGONFLY_HOST: "dragonfly"
+      DRAGONFLY_PORT: "6379"
+    depends_on:
+      dragonfly:
+        condition: service_healthy
     networks:
       - observability
     healthcheck:
@@ -19,6 +25,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
+
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -70,6 +77,22 @@ services:
     networks:
       - observability
 
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: engineer-challenge-dragonfly
+    restart: unless-stopped
+    command: dragonfly --logtostderr
+    ports:
+      - "6379:6379"
+    ulimits:
+      memlock: -1
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 volumes:
   prometheus_data:
   grafana_data:

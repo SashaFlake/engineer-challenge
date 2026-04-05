@@ -5,6 +5,7 @@ val arrowVersion: String by project
 val koinVersion: String by project
 val kotestVersion: String by project
 val graphqlKotlinVersion: String by project
+val lettuceVersion: String by project
 
 plugins {
     kotlin("jvm") version "2.3.0"
@@ -55,6 +56,9 @@ dependencies {
     implementation("io.insert-koin:koin-ktor:$koinVersion")
     implementation("io.insert-koin:koin-logger-slf4j:$koinVersion")
     implementation("org.mindrot:jbcrypt:0.4")
+    implementation("io.lettuce:lettuce-core:$lettuceVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.10.1")
+
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("io.ktor:ktor-client-content-negotiation")
     testImplementation("io.ktor:ktor-serialization-jackson")

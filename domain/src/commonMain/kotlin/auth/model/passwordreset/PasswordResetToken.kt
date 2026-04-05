@@ -11,7 +11,7 @@ data class PasswordResetToken(
     fun isExpired(now: Instant): Boolean = now.isAfter(expiresAt)
 
     companion object {
-        private const val TTL_SECONDS = 3600L
+        private const val TTL_SECONDS = 900L // 15min
 
         fun create(
             value: String,
