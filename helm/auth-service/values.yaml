@@ -93,3 +93,17 @@ securityContext:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Dragonfly subchart (aliased from Bitnami Redis — Redis-protocol compatible).
+# enabled: true  — deploy Dragonfly alongside the service (default for local/test K8s)
+# enabled: false — use a managed Redis-compatible service, set DRAGONFLY_HOST via env
+dragonfly:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+  replica:
+    replicaCount: 0
