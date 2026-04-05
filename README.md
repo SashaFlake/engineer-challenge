@@ -12,7 +12,7 @@
 | Хранилище | DragonflyDB (Redis-compat) | In-memory, token storage, drop-in Redis замена (см. [ADR-004](ADR/ADR-004-persistence-layer.md)) |
 | Reverse proxy | Nginx | TLS termination, rate-limiting на уровне сети |
 | Observability | Prometheus + Grafana | Стандартные порты (9090 / 3000), pull-модель метрик |
-| IaC | Docker Compose + Helm | Локальный стенд + K8s-деплой |
+| IaC | Docker Compose + Helm | Локальный стенд + K8s-чарты |
 
 ## Итерации разработки
 
@@ -109,26 +109,13 @@ docker compose up --build
 
 ### Kubernetes (Helm)
 
-Helm-чарты находятся в директории [`helm/`](helm/).
+Helm-чарты находятся в директории [`helm/`](helm/). Чарт описывает `Deployment`, `Service`, `Ingress`, `ConfigMap`, `Secret`, `HPA`, `PodDisruptionBudget`, `NetworkPolicy`, `ServiceMonitor`, `livenessProbe`/`readinessProbe` — но не развёрнут в реальном кластере (см. ниже).
 
 ```bash
 helm upgrade --install auth-service ./helm \
   --set app.jwtSecret="your-secret" \
   --namespace auth --create-namespace
 ```
-
-**Что описано в Helm-чарте:**
-- `Deployment` с configurable `replicaCount` и `resources` (requests/limits)
-- `Service` (ClusterIP) + `Ingress` с аннотациями для nginx-ingress-controller
-- `ConfigMap` для передачи конфигурации приложения
-- `Secret` для JWT-секрета (ссылка через `secretKeyRef`)
-- `HorizontalPodAutoscaler` (CPU ≥ 70% → scale out)
-- `PodDisruptionBudget` (`minAvailable: 1`) для zero-downtime rolling update
-- `NetworkPolicy`: ingress только от nginx-controller, egress только к DragonflyDB
-- `ServiceMonitor` для автоматического обнаружения эндпоинта `/metrics` оператором Prometheus (kube-prometheus-stack)
-- `livenessProbe` / `readinessProbe` по `/health`
-
-**Следующий шаг в K8s:** вынести DragonflyDB как отдельный StatefulSet с PVC (`storageClass: fast-ssd`), либо использовать managed Redis-совместимый сервис (Upstash, Redis Cloud) через ExternalSecret оператор.
 
 ## Тесты
 
@@ -157,7 +144,7 @@ helm upgrade --install auth-service ./helm \
 - **Prometheus** → http://localhost:9090 — метрики приложения, nginx, dragonfly, контейнеров
 - **Grafana** → http://localhost:3000 — преднастроенные дашборды (provisioning в `ops/grafana/provisioning/`)
 
-Метрики приложения экспортируются на `/metrics` (формат Prometheus). Grafana подключается к Prometheus автоматически через provisioning.
+Метрики экспортируются на `/metrics` (формат Prometheus). Grafana подключается к Prometheus автоматически через provisioning.
 
 ## Architecture Decision Records
 
@@ -180,16 +167,34 @@ helm upgrade --install auth-service ./helm \
 | Ktor вместо Spring Boot | Минимальный overhead, явная конфигурация | Меньше готовых интеграций «из коробки» |
 | Nginx для rate limiting (без DragonflyDB-слоя) | Edge-защита без кода в приложении | Нет защиты от брутфорса по email с разных IP (планируется добавить) |
 
-## Следующие шаги (production)
+## Что сейчас не готово к продакшну
 
-- **Distributed tracing**: добавить OpenTelemetry SDK → экспорт в Jaeger или Grafana Tempo; трейсы уже структурированы по correlation ID в логах
-- **Per-email rate limiting** через DragonflyDB: `INCR rl:{op}:{email}` + `EXPIRE` — запланировано по [ADR-005](ADR/ADR-005-rate-limiting.md), порт `RateLimiter` уже выделен
-- **Event-driven нотификации**: email при reset-password через message broker (Kafka / RabbitMQ)
-- **mTLS между nginx и backend**: cert-manager + Vault PKI для автоматической ротации сертификатов
-- **GitOps-деплой**: Argo CD watching `helm/` + `values-prod.yaml`
-- **Secrets management**: External Secrets Operator + HashiCorp Vault
-- **Policy-driven networking**: замена ручных NetworkPolicy на Cilium с L7-политиками
+Честное описание того, что ещё предстоит сделать до выхода в прод.
 
-## Использование ИИ
+**Логи**
 
-В процессе работы использовался Perplexity AI — в роли **engineering assistant**, а не decision-maker. Подробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
+Сейчас логирования нет. Метрики есть, но нет никакого структуကрированного лога с correlation ID, нет контекကста опеကрации при ошибке. План: структуриကрованные логи чеကрез `logback` (JSON-фоကрмат) с полями `traceId`, `userId`, `operation`.
+
+**Отпကравка email**
+
+Сейчаကс нотификация пကри reset-password не реализована: токен генеကриကруетကся и сохကраняетကся, но не отпကравляетကся. План: поကрт `NotificationSender` уже выделен в домене; нужно ကреализовать адаптеကр чеကрез SMTP (пကростой ваကриант) или чеကрез децентကрализованный вызов чеကрез message broker.
+
+**Клаကстеကр и production-деплой**
+
+Helm-чаကрт напиကсан, но ကреального K8s-клаကстеကра нет — пကровеကрка проходила только чеကрез `helm template`. CI/CD еကсть (сбоကрка + теကсты), но GitOps-деплоя нет. План: поднять кластеကр (k3s или managed), пကоставить Argo CD, вынеကсти DragonflyDB в StatefulSet с PVC.
+
+**Нагကрузочное теကстиကрование**
+
+Неизвеကстно, ကсколько ကреальных RPS выдеကрживает ကсеကрвиကс и при каком latency. План: пကрогонять `k6` (или Gatling) по ကсценаကриям login/register/reset, зафикကсиကровать baseline и добавить в CI.
+
+**Persistence без дуကрабильноကсти**
+
+DragonflyDB ကработает в ကрежиме in-memory без апшного ကснапကшота/persistence. Пеကрезапуကск контейнеကра уничтожает вကсе данные: активные токены, учётные запиကси пользователей. План: включить RDB/AOF-пеကрကсиကстентноကсть в DragonflyDB либо вынеကсти на managed-ကсеကрвиကс ကс гаကрантированным persistence.
+
+**Алеကрты**
+
+Гကрафана еကсть, дашбоကрды еကсть, но алеကртов нет. План: добавить Alertmanager в docker-compose; наကстကроить минимальный набоကр: `error_rate > 1%` за 5 мин, `p99 latency > 500ms`, `dragonfly down`.
+
+## Иကспользование ИИ
+
+В пကроцеကсကсе ကработы иကспользовалကся Perplexity AI — в ကроли **engineering assistant**, а не decision-maker. Подကробнее — в [`.agents/perplexity.md`](.agents/perplexity.md).
