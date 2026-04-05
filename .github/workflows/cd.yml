@@ -14,9 +14,6 @@ jobs:
       contents: read
       packages: write
 
-    outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,11 +82,12 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET_PROD }}
           CORS_HOSTS: ${{ secrets.CORS_ALLOWED_HOSTS }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image-tag }}
+          # Берём тег напрямую из git ref: refs/tags/v1.0.0 -> v1.0.0
+          IMAGE_TAG: ${{ github.ref_name }}
         run: |
           helm upgrade --install auth-service ./helm/auth-service \
             -f helm/auth-service/ip/values-ip.yaml \
-            --set image.repository=ghcr.io/${{ github.repository_owner }}/auth-service \
+            --set "image.repository=ghcr.io/${{ github.repository_owner }}/auth-service" \
             --set "image.tag=${IMAGE_TAG}" \
             --set "secrets.JWT_SECRET=${JWT_SECRET}" \
             --set "env.CORS_ALLOWED_HOSTS=${CORS_HOSTS}" \
