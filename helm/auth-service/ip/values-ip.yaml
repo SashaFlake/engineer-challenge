@@ -1,9 +1,11 @@
-# Значения для развёртывания без домена — прямой доступ по IP через NodePort.
-# TLS и cert-manager отключены, ingress отключён.
+# Деплой без домена — прямой доступ по IP через NodePort.
+# TLS и ingress отключены.
+# Используется для k3s-кластера по адресу 213.171.30.170
 replicaCount: 1
 
 image:
   repository: ghcr.io/sashaflake/auth-service
+  # tag переопределяется из CI через --set image.tag=<sha/version>
   tag: "latest"
   pullPolicy: Always
 
@@ -27,15 +29,19 @@ service:
   nodePort: 30081
 
 serviceMonitor:
-  enabled: true
+  enabled: false
 
 env:
   JWT_ISSUER: "auth-service-prod"
   JWT_AUDIENCE: "auth-service-users"
-  CORS_ALLOWED_HOSTS: "http://213.171.30.170:30080"
+  CORS_ALLOWED_HOSTS: "http://213.171.30.170:30081"
   STORAGE_BACKEND: "dragonfly"
   DRAGONFLY_HOST: "auth-service-dragonfly-master.auth.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
+
+# secrets.JWT_SECRET передаётся через --set secrets.JWT_SECRET=$JWT_SECRET_PROD
+secrets:
+  JWT_SECRET: ""
 
 dragonfly:
   enabled: true
@@ -48,6 +54,6 @@ dragonfly:
   metrics:
     enabled: true
     serviceMonitor:
-      enabled: true
+      enabled: false
   replica:
     replicaCount: 0

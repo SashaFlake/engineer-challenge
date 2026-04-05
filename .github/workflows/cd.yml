@@ -53,7 +53,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-prod:
-    name: Deploy to Prod
+    name: Deploy to k3s (NodePort)
     runs-on: ubuntu-latest
     needs: build-and-push
     environment: prod
@@ -73,15 +73,29 @@ jobs:
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_PROD }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-      - name: Deploy to prod
+      - name: Verify cluster connection
+        run: kubectl get nodes
+
+      - name: Add Bitnami repo (for Dragonfly subchart)
+        run: helm repo add bitnami https://charts.bitnami.com/bitnami && helm repo update
+
+      - name: Deploy to k3s
         run: |
           helm upgrade --install auth-service ./helm/auth-service \
-            -f helm/auth-service/prod/values-prod.yaml \
+            -f helm/auth-service/ip/values-ip.yaml \
             --set image.repository=ghcr.io/${{ github.repository_owner }}/auth-service \
             --set image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set secrets.JWT_SECRET=${{ secrets.JWT_SECRET_PROD }} \
-            --namespace auth-prod \
+            --namespace auth \
             --create-namespace \
             --wait \
             --timeout 5m
+
+      - name: Print access info
+        run: |
+          echo "Service available at: http://213.171.30.170:30081"
+          echo "GraphQL endpoint:      http://213.171.30.170:30081/graphql"
+          echo "GraphiQL explorer:     http://213.171.30.170:30081/graphiql"
+          echo "Metrics:               http://213.171.30.170:30081/metrics"
