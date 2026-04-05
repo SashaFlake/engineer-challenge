@@ -12,7 +12,7 @@
 | Хранилище | DragonflyDB (Redis-compat) | In-memory, token storage, drop-in Redis замена (см. [ADR-004](ADR/ADR-004-persistence-layer.md)) |
 | Reverse proxy | Nginx | TLS termination, rate-limiting на уровне сети |
 | Observability | Prometheus + Grafana | Стандартные порты (9090 / 3000), pull-модель метрик |
-| IaC | Docker Compose + Helm | Локальный стенд + K8s-чарты |
+| IaC | Terraform + Helm | k3s кластер на Cloud.ru + K8s-чарты |
 
 ## Итерации разработки
 
@@ -28,31 +28,33 @@
 
 Такое разделение является следствием Ports & Adapters: домен не знает ничего о хранилище.
 
+**Итерация 3 — Kubernetes + Terraform**
+
+Сервис развёрнут в реальном k3s-кластере на Cloud.ru. IaC полностью описывает кластер: установка k3s на master/worker нодах, ingress-nginx, cert-manager, kube-prometheus-stack, auth-service через Helm. Секреты передаются через `TF_VAR_*` переменные окружения, не хранятся в репозитории.
+
 ## Архитектура
 
 ### Request flow
 
 ```
-Client → Nginx (80/443) → auth-backend (:8080) → DragonflyDB (:6379)
+Client → ingress-nginx (:30080) → auth-service (:8080) → DragonflyDB (:6379)
                  ↓
-         nginx-exporter (:9113)
+         ServiceMonitor
                  ↓
-           Prometheus (:9090) ← dragonfly-exporter (:9121)
-                 ↓                  ← cadvisor (:8081)
-            Grafana (:3000)
+           Prometheus ← dragonfly ServiceMonitor
+                 ↓
+            Grafana (:32000)
 ```
 
 ```mermaid
 graph LR
-    Client -->|HTTP/HTTPS| Nginx
-    Nginx -->|proxy_pass :8080| App[auth-backend]
+    Client -->|NodePort 30080| Nginx[ingress-nginx]
+    Nginx -->|proxy| App[auth-service]
     App -->|Redis protocol :6379| Dragonfly[(DragonflyDB)]
-    App -->|/metrics| Prometheus
-    Nginx -->|stub_status| NginxExporter[nginx-exporter]
-    Dragonfly -->|redis metrics| DragonflyExporter[dragonfly-exporter]
-    NginxExporter --> Prometheus
-    DragonflyExporter --> Prometheus
-    cAdvisor --> Prometheus
+    App -->|/metrics| SM1[ServiceMonitor]
+    Dragonfly -->|redis_exporter :9121| SM2[ServiceMonitor]
+    SM1 --> Prometheus
+    SM2 --> Prometheus
     Prometheus --> Grafana
 ```
 
@@ -107,14 +109,83 @@ docker compose up --build
 | Grafana | http://localhost:3000 (admin / admin) |
 | cAdvisor | http://localhost:8081 |
 
-### Kubernetes (Helm)
+### Kubernetes (Terraform + k3s)
 
-Helm-чарты находятся в директории [`helm/`](helm/). Чарт описывает `Deployment`, `Service`, `Ingress`, `ConfigMap`, `Secret`, `HPA`, `PodDisruptionBudget`, `NetworkPolicy`, `ServiceMonitor`, `livenessProbe`/`readinessProbe` — но не развёрнут в реальном кластере (см. ниже).
+Инфраструктура описана в [`terraform/`](terraform/) и разворачивается одной командой. Кластер поднимается на двух нодах Cloud.ru, все компоненты устанавливаются через Helm.
+
+#### Требования
+
+- Terraform ≥ 1.9
+- SSH-доступ к нодам кластера (`~/.ssh/cloudruce`)
+- Helm ≥ 3.12 (используется локально для helm_release провайдера)
+
+#### Структура terraform/
+
+| Файл | Что делает |
+|---|---|
+| `k3s.tf` | Установка k3s на master и worker ноды по SSH, копирование kubeconfig |
+| `providers.tf` | Настройка провайдеров: helm, kubernetes |
+| `versions.tf` | Версии провайдеров и Terraform |
+| `variables.tf` | Все переменные — SSH-ключи, IP-адреса, секреты |
+| `ingress-nginx.tf` | Helm-релиз ingress-nginx |
+| `cert-manager.tf` | Helm-релиз cert-manager |
+| `letsencrypt.tf` | ClusterIssuer для Let's Encrypt (staging/prod) |
+| `monitoring.tf` | Helm-релиз kube-prometheus-stack + ConfigMap grafana-dashboards |
+| `auth-service.tf` | Namespace `auth` + Helm-релиз auth-service |
+| `helm-deps.tf` | `null_resource` для `helm dependency update` перед деплоем |
+| `helm.tf` | Провайдер helm через SSH-туннель к kubeconfig |
+| `outputs.tf` | Outputs: URL Grafana, URL auth-service |
+
+#### Переменные
+
+Секреты **не хранятся** в `terraform.tfvars` — передаются через переменные окружения:
 
 ```bash
-helm upgrade --install auth-service ./helm \
-  --set app.jwtSecret="your-secret" \
-  --namespace auth --create-namespace
+export TF_VAR_jwt_secret="..."
+export TF_VAR_grafana_admin_password="..."
+export TF_VAR_letsencrypt_email="..."
+```
+
+Пример остальных переменных — в [`terraform.tfvars.example`](terraform/terraform.tfvars.example).
+
+#### Деплой
+
+```bash
+cd terraform
+terraform init
+terraform apply -auto-approve
+```
+
+#### Адреса после деплоя (без домена, по IP)
+
+| Сервис | URL |
+|---|---|
+| GraphQL API | http://213.171.30.170:30080/graphql |
+| GraphQL Playground | http://213.171.30.170:30080/graphiql |
+| Grafana | http://213.171.30.170:32000 |
+
+#### Импорт существующих ресурсов
+
+Если ресурсы уже существуют в кластере (например, после ручного создания):
+
+```bash
+# namespace auth уже существует
+terraform import kubernetes_namespace.auth auth
+
+# ConfigMap grafana-dashboards уже создан вручную
+terraform import kubernetes_config_map.grafana_dashboards monitoring/grafana-dashboards
+```
+
+### Kubernetes (Helm напрямую)
+
+Helm-чарт также можно установить без Terraform:
+
+```bash
+helm dependency update ./helm/auth-service
+helm upgrade --install auth-service ./helm/auth-service \
+  --namespace auth --create-namespace \
+  --values ./helm/auth-service/ip/values-ip.yaml \
+  --set secrets.JWT_SECRET="your-secret"
 ```
 
 ## Тесты
@@ -139,12 +210,18 @@ helm upgrade --install auth-service ./helm \
 
 ## Observability
 
-После `docker compose up` доступны:
+### Docker Compose
 
-- **Prometheus** → http://localhost:9090 — метрики приложения, nginx, dragonfly, контейнеров
+- **Prometheus** → http://localhost:9090
 - **Grafana** → http://localhost:3000 — преднастроенные дашборды (provisioning в `ops/grafana/provisioning/`)
 
-Метрики экспортируются на `/metrics` (формат Prometheus). Grafana подключается к Prometheus автоматически через provisioning.
+### Kubernetes
+
+- **Grafana** → http://213.171.30.170:32000 — дашборды: auth-service, dragonfly, nginx
+- **ServiceMonitor** для auth-service и DragonflyDB — Prometheus Operator подхватывает автоматически
+- **ConfigMap** `grafana-dashboards` с лейблом `grafana_dashboard=1` — sidecar grafana-sc-dashboard подхватывает без перезапуска Grafana
+
+Метрики auth-service экспортируются на `/metrics` (Micrometer/Prometheus формат).
 
 ## Architecture Decision Records
 
@@ -166,6 +243,7 @@ helm upgrade --install auth-service ./helm \
 | GraphQL вместо REST | Типизированный контракт, introspection | Сложнее кэшировать, HTTP-кэш не применим напрямую |
 | Ktor вместо Spring Boot | Минимальный overhead, явная конфигурация | Меньше готовых интеграций «из коробки» |
 | Nginx для rate limiting (без DragonflyDB-слоя) | Edge-защита без кода в приложении | Нет защиты от брутфорса по email с разных IP (планируется добавить) |
+| Terraform + k3s вместо managed K8s | Полный контроль, воспроизводимость, дешевле | Больше операционной ответственности (control plane, обновления) |
 
 ## До production
 
@@ -177,21 +255,21 @@ helm upgrade --install auth-service ./helm \
 
 Токен генерируется и хранится, но письмо не уходит. Порт `NotificationSender` уже выделен в домене — нужен адаптер: SMTP для простого случая или вызов через message broker если нужна надёжная доставка с retry.
 
-**Реальный кластер и GitOps**
-
-Helm-чарт написан и проверен через `helm template`, но реального кластера нет. CI/CD гоняет сборку и тесты, но деплоя нет. Нужно: поднять кластер (k3s или managed), настроить Argo CD на `helm/` + `values-prod.yaml`, вынести DragonflyDB в StatefulSet с PVC.
-
 **Нагрузочное тестирование**
 
 Неизвестно, сколько RPS выдерживает сервис и при каком p99. Нужно прогнать `k6` по сценариям login/register/reset, зафиксировать baseline и добавить порог в CI — чтобы регрессия по производительности была видна сразу.
 
 **Durability у DragonflyDB**
 
-DragonflyDB сейчас работает без persistence: перезапуск контейнера уничтожает все данные — токены, пользователи. Нужно либо включить RDB/AOF снапшоты в конфигурации DragonflyDB, либо перейти на managed Redis-совместимый сервис с гарантированным persistence.
+DragonflyDB сейчас работает без persistence: перезапуск пода уничтожает все данные — токены, пользователи. Нужно либо включить RDB/AOF снапшоты, либо перейти на managed Redis-совместимый сервис с гарантированным persistence.
 
 **Алерты**
 
 Grafana и дашборды есть, но Alertmanager не настроен — инцидент никуда не прилетит. Минимальный набор: `error_rate > 1%` за 5 минут, `p99 latency > 500ms`, `dragonfly_up == 0`.
+
+**TLS**
+
+Cert-manager и ClusterIssuer для Let's Encrypt задеплоены, но сертификат не выпущен — нет домена. Как только появится домен, достаточно задать `var.grafana_hostname` и `var.auth_hostname` и включить ingress в соответствующих `values`.
 
 ## Использование ИИ
 

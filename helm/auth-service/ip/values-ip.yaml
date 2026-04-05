@@ -1,3 +1,5 @@
+# Значения для развёртывания без домена — прямой доступ по IP через NodePort.
+# TLS и cert-manager отключены, ingress отключён.
 replicaCount: 1
 
 image:
@@ -7,11 +9,11 @@ image:
 
 resources:
   requests:
-    cpu: 200m
-    memory: 512Mi
+    cpu: 100m
+    memory: 256Mi
   limits:
-    cpu: 1000m
-    memory: 1Gi
+    cpu: 500m
+    memory: 512Mi
 
 autoscaling:
   enabled: false
@@ -30,11 +32,9 @@ serviceMonitor:
 env:
   JWT_ISSUER: "auth-service-prod"
   JWT_AUDIENCE: "auth-service-users"
-  # CORS_ALLOWED_HOSTS передаётся через terraform: var.cors_allowed_hosts
-  CORS_ALLOWED_HOSTS: ""
+  CORS_ALLOWED_HOSTS: "http://213.171.30.170:30080"
   STORAGE_BACKEND: "dragonfly"
-  # DRAGONFLY_HOST передаётся через terraform: собирается из var.namespace
-  DRAGONFLY_HOST: ""
+  DRAGONFLY_HOST: "auth-service-dragonfly-master.auth.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
 
 dragonfly:
@@ -51,5 +51,3 @@ dragonfly:
       enabled: true
   replica:
     replicaCount: 0
-
-# secrets.JWT_SECRET передаётся через terraform set_sensitive

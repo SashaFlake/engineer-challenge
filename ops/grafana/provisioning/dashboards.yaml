@@ -1,0 +1,19 @@
+# Grafana dashboard provisioning config
+# Используется как Helm values для kube-prometheus-stack
+# ConfigMap grafana-dashboards создаётся через kubernetes_config_map в monitoring.tf
+grafana:
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ""
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+  dashboardsConfigMaps:
+    default: grafana-dashboards
