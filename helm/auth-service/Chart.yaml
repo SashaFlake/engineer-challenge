@@ -4,3 +4,17 @@ description: Ktor-based auth service with GraphQL API
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
+
+dependencies:
+  # Dragonfly is a Redis-compatible KV store used as:
+  #   1. Persistence layer for User and PasswordResetToken (ADR-003)
+  #   2. Distributed rate limiting counters across replicas (ADR-004)
+  #
+  # Using the Bitnami Redis chart as Dragonfly is Redis-protocol compatible.
+  # In production, prefer a managed Redis-compatible service and set
+  # dragonfly.enabled=false, configuring DRAGONFLY_HOST via env instead.
+  - name: redis
+    alias: dragonfly
+    version: ">=19.0.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: dragonfly.enabled

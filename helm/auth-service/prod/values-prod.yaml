@@ -25,6 +25,12 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Edge rate limiting — flood/DDoS protection (per IP, stateless).
+    # Precise per-user/per-email limits are enforced at the application layer via Dragonfly.
+    # See ADR-004 for the full two-layer strategy.
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
   hosts:
     - host: auth.example.com
       paths:
@@ -39,5 +45,10 @@ env:
   JWT_ISSUER: "auth-service-prod"
   JWT_AUDIENCE: "auth-service-users"
   CORS_ALLOWED_HOSTS: "https://app.example.com"
+  # Dragonfly as shared state for distributed rate limiting across replicas.
+  # See ADR-003 (persistence layer) and ADR-004 (rate limiting strategy).
+  STORAGE_BACKEND: "dragonfly"
+  DRAGONFLY_HOST: "dragonfly.default.svc.cluster.local"
+  DRAGONFLY_PORT: "6379"
 
 # secrets.JWT_SECRET — задаётся через CI/CD: --set secrets.JWT_SECRET=$JWT_SECRET
