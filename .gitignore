@@ -1,2 +1,17 @@
 .idea
 *.iml
+
+# Terraform — секреты и локальные файлы
+terraform/terraform.tfvars
+terraform/*.tfvars
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/kubeconfig.yaml
+terraform/node-token.txt
+terraform/*.pem
+terraform/*.key
+
+# kubeconfig
+kubeconfig.yaml

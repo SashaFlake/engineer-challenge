@@ -13,8 +13,10 @@ dependencies:
   # Using the Bitnami Redis chart as Dragonfly is Redis-protocol compatible.
   # In production, prefer a managed Redis-compatible service and set
   # dragonfly.enabled=false, configuring DRAGONFLY_HOST via env instead.
+  #
+  # charts.bitnami.com заблокирован в РФ — используем OCI-реестр Docker Hub
   - name: redis
     alias: dragonfly
     version: ">=19.0.0"
-    repository: "https://charts.bitnami.com/bitnami"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
     condition: dragonfly.enabled

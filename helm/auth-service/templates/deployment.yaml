@@ -18,6 +18,20 @@ spec:
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.dragonfly.enabled }}
+      initContainers:
+        - name: wait-for-dragonfly
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z {{ include "auth-service.fullname" . }}-dragonfly-master {{ .Values.env.DRAGONFLY_PORT | default "6379" }}; do
+                echo "Waiting for Dragonfly..."
+                sleep 2
+              done
+              echo "Dragonfly is ready!"
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
