@@ -76,13 +76,17 @@ jobs:
         run: kubectl get nodes
 
       - name: Add Bitnami repo (for Dragonfly subchart)
-        run: helm repo add bitnami https://charts.bitnami.com/bitnami && helm repo update
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Build chart dependencies
+        run: helm dependency build ./helm/auth-service
 
       - name: Deploy to k3s
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET_PROD }}
           CORS_HOSTS: ${{ secrets.CORS_ALLOWED_HOSTS }}
-          # Берём тег напрямую из git ref: refs/tags/v1.0.0 -> v1.0.0
           IMAGE_TAG: ${{ github.ref_name }}
         run: |
           helm upgrade --install auth-service ./helm/auth-service \
