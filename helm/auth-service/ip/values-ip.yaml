@@ -12,6 +12,11 @@ image:
   tag: "latest"
   pullPolicy: Always
 
+# Секрет для пулла из GHCR (private package)
+# Создаётся в CI перед деплоем
+imagePullSecrets:
+  - name: ghcr-auth
+
 resources:
   requests:
     cpu: 100m
@@ -37,17 +42,13 @@ serviceMonitor:
 env:
   JWT_ISSUER: "auth-service-prod"
   JWT_AUDIENCE: "auth-service-users"
-  # CORS_ALLOWED_HOSTS передаётся через --set env.CORS_ALLOWED_HOSTS=${{ secrets.CORS_ALLOWED_HOSTS }}
   CORS_ALLOWED_HOSTS: ""
   STORAGE_BACKEND: "dragonfly"
-  # Dragonfly задеплоен отдельно в том же namespace auth
   DRAGONFLY_HOST: "dragonfly-master.auth.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
 
-# secrets.JWT_SECRET передаётся через --set secrets.JWT_SECRET=${{ secrets.JWT_SECRET_PROD }}
 secrets:
   JWT_SECRET: ""
 
-# Subchart отключён — Dragonfly деплоится отдельно
 dragonfly:
   enabled: false

@@ -16,6 +16,10 @@ spec:
       annotations:
         {{- toYaml .Values.podAnnotations | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if .Values.dragonfly.enabled }}
@@ -52,6 +56,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "auth-service.fullname" . }}-secrets
                   key: JWT_SECRET
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:

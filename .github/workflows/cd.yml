@@ -75,12 +75,24 @@ jobs:
       - name: Verify cluster connection
         run: kubectl get nodes
 
+      - name: Create GHCR pull secret
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          kubectl create namespace auth --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry ghcr-auth \
+            --docker-server=ghcr.io \
+            --docker-username="${REPO_OWNER}" \
+            --docker-password="${GHCR_TOKEN}" \
+            --namespace auth \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy auth-service
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET_PROD }}
           CORS_HOSTS: ${{ secrets.CORS_ALLOWED_HOSTS }}
           IMAGE_TAG: ${{ github.ref_name }}
-          # GHCR требует строчные буквы — приводим owner к lowercase
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           IMAGE_REPO="ghcr.io/${REPO_OWNER,,}/auth-service"
