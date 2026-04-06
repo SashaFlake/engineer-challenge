@@ -12,7 +12,6 @@ import auth.port.PasswordResetTokenRepository
 import auth.port.TokenIssuer
 import auth.port.UserRepository
 import com.sashaflake.infrastructure.adapter.BCryptPasswordHasher
-import com.sashaflake.infrastructure.adapter.DragonflyPasswordResetTokenRepository
 import com.sashaflake.infrastructure.adapter.InMemoryPasswordResetTokenRepository
 import com.sashaflake.infrastructure.adapter.InMemoryUserRepository
 import com.sashaflake.infrastructure.adapter.JwtTokenIssuer
@@ -20,6 +19,7 @@ import com.sashaflake.infrastructure.adapter.StubEmailSender
 import com.sashaflake.infrastructure.adapter.UuidIdGenerator
 import com.sashaflake.infrastructure.adapter.UuidPasswordResetTokenGenerator
 import com.sashaflake.infrastructure.metrics.AuthMetrics
+import com.sashaflake.infrastructure.persistence.dragonfly.DragonflyPasswordResetTokenRepository
 import com.sashaflake.infrastructure.persistence.dragonfly.DragonflyUserRepository
 import com.sashaflake.infrastructure.plugins.appMicrometerRegistry
 import io.ktor.server.application.Application
