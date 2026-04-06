@@ -44,7 +44,7 @@ env:
   JWT_AUDIENCE: "auth-service-users"
   CORS_ALLOWED_HOSTS: ""
   STORAGE_BACKEND: "dragonfly"
-  DRAGONFLY_HOST: "dragonfly-master.auth.svc.cluster.local"
+  DRAGONFLY_HOST: "auth-service-dragonfly-master.auth.svc.cluster.local"
   DRAGONFLY_PORT: "6379"
 
 secrets:
