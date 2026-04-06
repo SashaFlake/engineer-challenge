@@ -16,7 +16,7 @@ fun Application.configureMonitoring() {
         registry = appMicrometerRegistry
     }
     install(CallLogging) {
-        level = Level.INFO
+        level = Level.WARN
         filter { call -> call.request.path().startsWith("/") }
     }
 }
