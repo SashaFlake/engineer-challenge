@@ -92,14 +92,18 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET_PROD }}
           CORS_HOSTS: ${{ secrets.CORS_ALLOWED_HOSTS }}
+          # metadata-action генерирует тег без 'v': v1.0.6 -> 1.0.6
+          # Убираем 'v' из github.ref_name через bash substring
           IMAGE_TAG: ${{ github.ref_name }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           IMAGE_REPO="ghcr.io/${REPO_OWNER,,}/auth-service"
+          # Убираем префикс 'v': v1.0.6 -> 1.0.6
+          IMAGE_TAG_CLEAN="${IMAGE_TAG#v}"
           helm upgrade --install auth-service ./helm/auth-service \
             -f helm/auth-service/ip/values-ip.yaml \
             --set "image.repository=${IMAGE_REPO}" \
-            --set "image.tag=${IMAGE_TAG}" \
+            --set "image.tag=${IMAGE_TAG_CLEAN}" \
             --set "secrets.JWT_SECRET=${JWT_SECRET}" \
             --set "env.CORS_ALLOWED_HOSTS=${CORS_HOSTS}" \
             --namespace auth \
