@@ -1,18 +1,21 @@
-package com.sashaflake.infrastructure.adapter
+package com.sashaflake.infrastructure.persistence.dragonfly
 
 import auth.model.passwordreset.PasswordResetToken
 import auth.model.user.UserId
 import auth.port.PasswordResetTokenRepository
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
-import io.lettuce.core.api.coroutines.RedisCoroutinesCommands
+import io.lettuce.core.api.StatefulRedisConnection
+import io.lettuce.core.api.coroutines
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @OptIn(ExperimentalLettuceCoroutinesApi::class)
 class DragonflyPasswordResetTokenRepository(
-    private val commands: RedisCoroutinesCommands<String, String>,
+    private val connection: StatefulRedisConnection<String, String>,
 ) : PasswordResetTokenRepository {
+
+    private val commands = connection.coroutines()
 
     override suspend fun save(token: PasswordResetToken) {
         val ttl = maxOf(0L, Instant.now().until(token.expiresAt, ChronoUnit.SECONDS))
